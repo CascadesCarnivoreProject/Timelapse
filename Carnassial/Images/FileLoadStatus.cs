@@ -8,9 +8,9 @@ namespace Carnassial.Images
     internal class FileLoadStatus : FileIOComputeTransactionStatus, IDisposable
     {
         private bool disposed;
-        private CachedImage image;
+        private CachedImage? image;
 
-        public ImageRow CurrentFile { get; set; }
+        public ImageRow? CurrentFile { get; set; }
         public int ImageRenderWidth { get; private set; }
         public UInt64 MostRecentImageUpdate { get; set; }
         public int TotalFiles { get; set; }
@@ -77,7 +77,7 @@ namespace Carnassial.Images
             }
         }
 
-        public bool TryDetachImage(out CachedImage image)
+        public bool TryDetachImage(out CachedImage? image)
         {
             if (this.image == null)
             {

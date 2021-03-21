@@ -42,7 +42,7 @@ namespace Carnassial.Images
             this.lensAngle = 0.0;
             this.magnifyingGlassAngle = 0.0;
 
-            LinearGradientBrush linearGradientBrush = new LinearGradientBrush()
+            LinearGradientBrush linearGradientBrush = new()
             {
                 StartPoint = new Point(0, 0),
                 EndPoint = new Point(0, 1)
@@ -57,7 +57,7 @@ namespace Carnassial.Images
             // from the edge of the lens to the corner of the square. Its coordinates are therefore [ sqrt(2)/2 D, sqrt(2)/2 D, D, D]
             // where D is the magnifying glass's diameter. sqrt(2)/2 is rounded down to 0.7 below to ensure the inner end of the 
             // handle isn't visible.
-            Line handle = new Line()
+            Line handle = new()
             {
                 StrokeThickness = 5,
                 X1 = 0.7 * Constant.ImageDisplay.MagnifyingGlassDiameter,
@@ -70,7 +70,7 @@ namespace Carnassial.Images
 
             // create the lens of the magnifying glass
             this.lensCanvas = new Canvas();
-            Ellipse lensBackground = new Ellipse()
+            Ellipse lensBackground = new()
             {
                 Width = Constant.ImageDisplay.MagnifyingGlassDiameter,
                 Height = Constant.ImageDisplay.MagnifyingGlassDiameter,
@@ -87,7 +87,7 @@ namespace Carnassial.Images
             };
 
             // fill and outline the lens
-            VisualBrush lensFill = new VisualBrush()
+            VisualBrush lensFill = new()
             {
                 ViewboxUnits = BrushMappingMode.Absolute,
                 Viewbox = new Rect(0, 0, 50, 50),
@@ -98,7 +98,7 @@ namespace Carnassial.Images
             this.magnifierLens.Stroke = linearGradientBrush;
             this.lensCanvas.Children.Add(this.magnifierLens);
 
-            Ellipse lensImage = new Ellipse();
+            Ellipse lensImage = new();
             Canvas.SetLeft(lensImage, 2);
             Canvas.SetTop(lensImage, 2);
             lensImage.StrokeThickness = 4;
@@ -107,7 +107,7 @@ namespace Carnassial.Images
             this.lensCanvas.Children.Add(lensImage);
 
             // crosshairs
-            Line verticalCrosshair = new Line()
+            Line verticalCrosshair = new()
             {
                 StrokeThickness = 0.25,
                 X1 = 5,
@@ -119,7 +119,7 @@ namespace Carnassial.Images
             };
             this.lensCanvas.Children.Add(verticalCrosshair);
 
-            Line horizontalCrosshair = new Line()
+            Line horizontalCrosshair = new()
             {
                 StrokeThickness = 0.25,
                 X1 = Constant.ImageDisplay.MagnifyingGlassDiameter / 2,
@@ -136,7 +136,7 @@ namespace Carnassial.Images
             // RedrawIfVisible() must be updated.
             this.rotation = new RotateTransform(this.magnifyingGlassAngle, Constant.ImageDisplay.MagnifyingGlassDiameter, Constant.ImageDisplay.MagnifyingGlassDiameter);
 
-            TransformGroup transformGroup = new TransformGroup();
+            TransformGroup transformGroup = new();
             transformGroup.Children.Add(this.rotation);
             this.RenderTransform = transformGroup;
         }
@@ -161,7 +161,7 @@ namespace Carnassial.Images
             Point magnifierCenterPoint = Marker.ConvertRatioToPoint(mouseNormalizedPosition, canvasToMagnify.Width, canvasToMagnify.Height);
 
             // create a brush from the unaltered image in the magnification canvas and use it to fill the magnifying glass
-            VisualBrush magnifierBrush = new VisualBrush(canvasToMagnify)
+            VisualBrush magnifierBrush = new(canvasToMagnify)
             {
                 ViewboxUnits = BrushMappingMode.Absolute,
                 ViewportUnits = BrushMappingMode.RelativeToBoundingBox,
@@ -244,13 +244,13 @@ namespace Carnassial.Images
 
                 // rotate the entire magnifying glass to its new angle
                 this.rotation.Angle = this.magnifyingGlassAngle;
-                Duration animationDuration = new Duration(Constant.Images.MagnifierRotationTime);
-                DoubleAnimation rotateAnimation = new DoubleAnimation(this.magnifyingGlassAngle, endMangifyingGlassRotationAngle, animationDuration);
+                Duration animationDuration = new(Constant.Images.MagnifierRotationTime);
+                DoubleAnimation rotateAnimation = new(this.magnifyingGlassAngle, endMangifyingGlassRotationAngle, animationDuration);
                 this.rotation.BeginAnimation(RotateTransform.AngleProperty, rotateAnimation);
 
                 // rotate the lens within the magnifying glass to compensate for the magnifier's rotation
-                DoubleAnimation lensAnimation = new DoubleAnimation(this.lensAngle, endLensAngle, animationDuration);
-                RotateTransform rotateTransformLens = new RotateTransform(this.magnifyingGlassAngle, Constant.ImageDisplay.MagnifyingGlassDiameter / 2.0, Constant.ImageDisplay.MagnifyingGlassDiameter / 2.0);
+                DoubleAnimation lensAnimation = new(this.lensAngle, endLensAngle, animationDuration);
+                RotateTransform rotateTransformLens = new(this.magnifyingGlassAngle, Constant.ImageDisplay.MagnifyingGlassDiameter / 2.0, Constant.ImageDisplay.MagnifyingGlassDiameter / 2.0);
                 rotateTransformLens.BeginAnimation(RotateTransform.AngleProperty, lensAnimation);
                 this.lensCanvas.RenderTransform = rotateTransformLens;
 

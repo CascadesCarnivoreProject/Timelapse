@@ -34,8 +34,12 @@ namespace Carnassial.Control
             set { this.ContentControl.IsReadOnly = value; }
         }
 
-        public override bool IsCopyableValue(object value)
+        public override bool IsCopyableValue(object? value)
         {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
             return (int)value != 0;
         }
 
@@ -56,16 +60,16 @@ namespace Carnassial.Control
             {
                 this.LabelControl.IsChecked = false;
             }
-            this.labelControlIsChecked = this.LabelControl.IsChecked.Value;
+            this.labelControlIsChecked = this.LabelControl.IsChecked ?? false;
         }
 
         public override void SetValue(object valueAsObject)
         {
             // counter values are unsigned integers but are are manipulated as strings
-            string valueAsString;
+            string? valueAsString;
             if ((valueAsObject is string) || (valueAsObject == null))
             {
-                valueAsString = (string)valueAsObject;
+                valueAsString = (string?)valueAsObject;
             }
             else
             {

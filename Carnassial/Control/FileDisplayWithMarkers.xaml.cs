@@ -2,6 +2,7 @@
 using Carnassial.Images;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -29,15 +30,15 @@ namespace Carnassial.Control
 
         private readonly MagnifyingGlass magnifyingGlass;
 
-        private List<Marker> markers;
+        private List<Marker>? markers;
 
         // mouse state used to discriminate clicks from drags
-        private UIElement mouseDownSender;
+        private UIElement? mouseDownSender;
         private DateTime mouseDownTime;
         private Point mouseDownLocation;
         private Point previousMousePosition;
 
-        public event EventHandler<MarkerCreatedOrDeletedEventArgs> MarkerCreatedOrDeleted;
+        public event EventHandler<MarkerCreatedOrDeletedEventArgs>? MarkerCreatedOrDeleted;
 
         /// <summary>
         /// Gets or sets the maximum zoom of the display image.
@@ -57,7 +58,7 @@ namespace Carnassial.Control
             this.displayImageScale = new ScaleTransform(this.bookmark.Scale.X, this.bookmark.Scale.Y);
             this.displayImageTranslation = new TranslateTransform(this.bookmark.Translation.X, this.bookmark.Translation.Y);
 
-            TransformGroup transformGroup = new TransformGroup();
+            TransformGroup transformGroup = new();
             transformGroup.Children.Add(this.displayImageScale);
             transformGroup.Children.Add(this.displayImageTranslation);
 
@@ -93,7 +94,7 @@ namespace Carnassial.Control
         /// <summary>
         /// Gets or sets the markers on the image.
         /// </summary>
-        public List<Marker> Markers
+        public List<Marker>? Markers
         {
             get
             {
@@ -168,14 +169,14 @@ namespace Carnassial.Control
 
         private Canvas AddMarker(Marker marker, Size canvasRenderSize, bool imageToDisplayMarkers)
         {
-            Canvas markerCanvas = new Canvas()
+            Canvas markerCanvas = new()
             {
                 ToolTip = marker.Tooltip,
                 Tag = marker
             };
 
             // create a marker
-            Ellipse mark = new Ellipse()
+            Ellipse mark = new()
             {
                 Width = Constant.ImageDisplay.MarkerDiameter,
                 Height = Constant.ImageDisplay.MarkerDiameter,
@@ -186,7 +187,7 @@ namespace Carnassial.Control
             markerCanvas.Children.Add(mark);
 
             // draw another ellipse as a black outline around it
-            Ellipse blackOutline = new Ellipse()
+            Ellipse blackOutline = new()
             {
                 Stroke = Brushes.Black,
                 Width = mark.Width + 1,
@@ -196,7 +197,7 @@ namespace Carnassial.Control
             markerCanvas.Children.Add(blackOutline);
 
             // and another ellipse as a white outline around it
-            Ellipse whiteOutline = new Ellipse()
+            Ellipse whiteOutline = new()
             {
                 Stroke = Brushes.White,
                 Width = blackOutline.Width + 1,
@@ -207,7 +208,7 @@ namespace Carnassial.Control
 
             // maybe add emphasis
             double outerDiameter = whiteOutline.Width;
-            Ellipse glow = null;
+            Ellipse? glow = null;
             if (marker.Emphasize)
             {
                 glow = new Ellipse()
@@ -240,6 +241,7 @@ namespace Carnassial.Control
 
             if (marker.Emphasize)
             {
+                Debug.Assert(glow != null);
                 position = (markerCanvas.Width - glow.Width) / 2.0;
                 Canvas.SetLeft(glow, position);
                 Canvas.SetTop(glow, position);
@@ -247,7 +249,7 @@ namespace Carnassial.Control
 
             if (marker.ShowLabel)
             {
-                Label label = new Label()
+                Label label = new()
                 {
                     Content = marker.Tooltip,
                     Opacity = 0.6,
@@ -334,7 +336,7 @@ namespace Carnassial.Control
         /// <summary>
         /// Set a wholly new image.  Clears any existing markers and syncs the magnifier image to the display image.
         /// </summary>
-        public void Display(CachedImage image, List<Marker> markers)
+        public void Display(CachedImage image, List<Marker>? markers)
         {
             // initate render of new image for display
             this.Display(image);
@@ -422,7 +424,7 @@ namespace Carnassial.Control
                     // get the current point, and create a marker on it.
                     Point position = e.GetPosition(this.FileDisplay.Image);
                     position = Marker.ConvertPointToRatio(position, this.FileDisplay.Image.ActualWidth, this.FileDisplay.Image.ActualHeight);
-                    Marker marker = new Marker(null, position)
+                    Marker marker = new(null, position)
                     {
                         ShowLabel = true, // show label on creation, cleared on next refresh
                         LabelShownPreviously = false
@@ -540,6 +542,8 @@ namespace Carnassial.Control
         // not associated with the selected counter or no counter is selected.
         private void Marker_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
+            Debug.Assert(this.Markers != null);
+
             Canvas canvas = (Canvas)sender;
             Marker marker = (Marker)canvas.Tag;
             this.Markers.Remove(marker);

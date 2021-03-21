@@ -14,15 +14,12 @@ namespace Carnassial.Control
 
         protected override TimeSpan ConvertIncrementOrDecrementToTimeSpan(char partFormat, int incrementOrDecrement)
         {
-            switch (partFormat)
+            return partFormat switch
             {
-                case 'h':
-                    return TimeSpan.FromHours(incrementOrDecrement);
-                case 'm':
-                    return TimeSpan.FromMinutes(incrementOrDecrement * Constant.Time.UtcOffsetGranularityInMinutes);
-                default:
-                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled part format {0}.", partFormat));
-            }
+                'h' => TimeSpan.FromHours(incrementOrDecrement),
+                'm' => TimeSpan.FromMinutes(incrementOrDecrement * Constant.Time.UtcOffsetGranularityInMinutes),
+                _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled part format {0}.", partFormat)),
+            };
         }
     }
 }

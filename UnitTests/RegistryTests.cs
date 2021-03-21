@@ -16,7 +16,7 @@ namespace Carnassial.UnitTests
         [TestMethod]
         public void CarnassialProductionKeysRead()
         {
-            CarnassialState state = new CarnassialState();
+            CarnassialState state = new();
             state.ReadFromRegistry();
         }
 
@@ -32,7 +32,7 @@ namespace Carnassial.UnitTests
                 }
             }
 
-            CarnassialUserRegistrySettings userSettings = new CarnassialUserRegistrySettings(testRootKey);
+            CarnassialUserRegistrySettings userSettings = new(testRootKey);
             this.VerifyDefaultState(userSettings);
 
             // write
@@ -95,7 +95,7 @@ namespace Carnassial.UnitTests
         [TestMethod]
         public void EditorProductionKeysRead()
         {
-            EditorUserRegistrySettings editorRegistry = new EditorUserRegistrySettings();
+            EditorUserRegistrySettings editorRegistry = new();
         }
 
         [TestMethod]
@@ -110,7 +110,7 @@ namespace Carnassial.UnitTests
                 }
             }
 
-            EditorUserRegistrySettings editorRegistry = new EditorUserRegistrySettings(testRootKey);
+            EditorUserRegistrySettings editorRegistry = new(testRootKey);
             Assert.IsNotNull(editorRegistry.MostRecentTemplates);
             Assert.IsTrue(editorRegistry.MostRecentTemplates.Count == 0);
 

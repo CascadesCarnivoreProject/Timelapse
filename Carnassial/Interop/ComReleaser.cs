@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace Carnassial.Interop
 {
     // adapted from Stephen Toub's .NET Matters: IFileOperation in Windows Vista column, MSDN Magazine December 2007
+    [SupportedOSPlatform(Constant.Platform.Windows)]
     internal class ComReleaser<T> : IDisposable where T : class
     {
         private bool disposed;

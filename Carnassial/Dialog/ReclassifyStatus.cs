@@ -8,10 +8,10 @@ namespace Carnassial.Dialog
     public class ReclassifyStatus : FileIOComputeTransactionStatus, IDisposable
     {
         private bool disposed;
-        private CachedImage image;
+        private CachedImage? image;
 
-        public ImageRow File { get; set; }
-        public ImageProperties ImageProperties { get; set; }
+        public ImageRow? File { get; set; }
+        public ImageProperties? ImageProperties { get; set; }
         public UInt64 MostRecentImageUpdate { get; set; }
 
         public ReclassifyStatus()

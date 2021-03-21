@@ -22,8 +22,7 @@ namespace Carnassial.Control
                 args.CancelCommand();
             }
 
-            string text = args.SourceDataObject.GetData(DataFormats.UnicodeText) as string;
-            if (Utilities.IsDigits(text) == false)
+            if ((args.SourceDataObject.GetData(DataFormats.UnicodeText) is not string text) || (Utilities.IsDigits(text) == false))
             {
                 args.CancelCommand();
             }
@@ -42,7 +41,7 @@ namespace Carnassial.Control
             {
                 case ControlType.Counter:
                 case ControlType.Note:
-                    AutocompleteTextBox textBox = new AutocompleteTextBox()
+                    AutocompleteTextBox textBox = new()
                     {
                         AllowLeadingWhitespace = true,
                         Autocompletions = autocompletionCache[searchTerm.DataLabel],
@@ -55,7 +54,7 @@ namespace Carnassial.Control
                     };
 
                     BindingOperations.SetBinding(textBox, CheckBox.IsEnabledProperty, new Binding(nameof(searchTerm.UseForSearching)));
-                    Binding textBinding = new Binding(nameof(searchTerm.DatabaseValue))
+                    Binding textBinding = new(nameof(searchTerm.DatabaseValue))
                     {
                         UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
                     };
@@ -73,7 +72,7 @@ namespace Carnassial.Control
                     }
                     return textBox;
                 case ControlType.DateTime:
-                    DateTimeOffsetPicker dateTimeOffset = new DateTimeOffsetPicker()
+                    DateTimeOffsetPicker dateTimeOffset = new()
                     {
                         DataContext = searchTerm,
                         Value = (DateTime)searchTerm.DatabaseValue,
@@ -86,7 +85,7 @@ namespace Carnassial.Control
                     BindingOperations.SetBinding(dateTimeOffset, CheckBox.IsEnabledProperty, new Binding(nameof(searchTerm.UseForSearching)));
                     return dateTimeOffset;
                 case ControlType.FixedChoice:
-                    ComboBox comboBox = new ComboBox()
+                    ComboBox comboBox = new()
                     {
                         DataContext = searchTerm,
                         ItemsSource = searchTerm.WellKnownValues,
@@ -98,7 +97,7 @@ namespace Carnassial.Control
                     BindingOperations.SetBinding(comboBox, CheckBox.IsEnabledProperty, new Binding(nameof(searchTerm.UseForSearching)));
                     return comboBox;
                 case ControlType.Flag:
-                    CheckBox checkBox = new CheckBox()
+                    CheckBox checkBox = new()
                     {
                         DataContext = searchTerm,
                         HorizontalAlignment = HorizontalAlignment.Left,
@@ -112,7 +111,7 @@ namespace Carnassial.Control
                     BindingOperations.SetBinding(checkBox, CheckBox.IsEnabledProperty, new Binding(nameof(searchTerm.UseForSearching)));
                     return checkBox;
                 case ControlType.UtcOffset:
-                    UtcOffsetPicker utcOffset = new UtcOffsetPicker()
+                    UtcOffsetPicker utcOffset = new()
                     {
                         DataContext = searchTerm,
                         IsTabStop = true,
@@ -135,14 +134,14 @@ namespace Carnassial.Control
         {
             public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
             {
-                Debug.Assert(targetType == typeof(Nullable<bool>), "Expected to convert to Nullable<bool>.");
-                return new Nullable<bool>((bool)value);
+                Debug.Assert(targetType == typeof(bool?), "Expected to convert to bool?.");
+                return new bool?((bool)value);
             }
 
             public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             {
                 Debug.Assert(targetType == typeof(object), "Expected request to convert bool to object.");
-                return ((Nullable<bool>)value).Value;
+                return ((bool?)value).Value;
             }
         }
 
@@ -166,22 +165,22 @@ namespace Carnassial.Control
             public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
             {
                 Debug.Assert(targetType == typeof(string), "Expected to convert to string.");
-                return value.ToString();
+                // if needed, check parameter
+                return ((int)value).ToString(culture);
             }
 
             public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             {
                 Debug.Assert(targetType == typeof(object), "Expected request to convert string to object.");
+                // if needed, check parameter
+
                 string valueAsString = (string)value;
                 if (String.IsNullOrEmpty(valueAsString))
                 {
                     // while counter input is limited to numbers a user can delete all text during editing
-                    return null;
+                    valueAsString = Constant.ControlDefault.CounterValue;
                 }
-                else
-                {
-                    return Int32.Parse(valueAsString, NumberStyles.AllowLeadingSign, CultureInfo.CurrentCulture);
-                }
+                return Int32.Parse(valueAsString, NumberStyles.AllowLeadingSign, CultureInfo.CurrentCulture);
             }
         }
 

@@ -10,7 +10,7 @@ namespace Carnassial.Interop
         private bool disposed;
         private readonly bool isPinning;
         private readonly UInt64 originalAffinity;
-        private readonly SafeAccessTokenHandle unmanagedThread;
+        private readonly SafeAccessTokenHandle? unmanagedThread;
 
         public HyperthreadSiblingAffinity(int taskID)
         {
@@ -56,9 +56,12 @@ namespace Carnassial.Interop
 
             if (disposing && this.isPinning)
             {
-                NativeMethods.SetThreadAffinityMask(this.unmanagedThread, this.originalAffinity);
-                Thread.EndThreadAffinity();
-                this.unmanagedThread.Dispose();
+                if (this.unmanagedThread != null)
+                {
+                    NativeMethods.SetThreadAffinityMask(this.unmanagedThread, this.originalAffinity);
+                    Thread.EndThreadAffinity();
+                    this.unmanagedThread.Dispose();
+                }
             }
             this.disposed = true;
         }

@@ -8,7 +8,7 @@ namespace Carnassial.Control
 {
     public class TextBoxUpDownAdorner : Adorner
     {
-        private static readonly Pen Outline = new Pen(new SolidColorBrush(Color.FromArgb(64, 255, 255, 255)), 5);
+        private static readonly Pen Outline = new(new SolidColorBrush(Color.FromArgb(64, 255, 255, 255)), 5);
         private static readonly Brush Fill = Brushes.Black;
 
         private double bottom;
@@ -17,7 +17,7 @@ namespace Carnassial.Control
         private readonly StreamGeometry triangle;
         private double x;
 
-        public event Action<TextBox, int> Button_Clicked;
+        public event Action<TextBox, int>? Button_Clicked;
 
         public TextBoxUpDownAdorner(TextBox adornedTextBox)
             : base(adornedTextBox)

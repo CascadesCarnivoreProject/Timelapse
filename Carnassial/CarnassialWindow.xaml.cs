@@ -13,9 +13,11 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.Versioning;
 using System.Speech.Synthesis;
 using System.Threading.Tasks;
 using System.Windows;
@@ -35,9 +37,10 @@ namespace Carnassial
         private bool disposed;
         private readonly Lazy<SpeechSynthesizer> speechSynthesizer;
 
-        public DataEntryHandler DataHandler { get; private set; }
+        public DataEntryHandler? DataHandler { get; private set; }
         public CarnassialState State { get; private set; }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         public CarnassialWindow()
         {
             App.Current.DispatcherUnhandledException += this.OnUnhandledException;
@@ -69,7 +72,7 @@ namespace Carnassial
                 string displaySlotKeyName = displaySlot.ToString(keyboardCulture);
                 string analysisHeader = App.FormatResource(Constant.ResourceKey.AnalysisHeader, displaySlotKeyName);
 
-                MenuItem copyToAnalysisSlot = new MenuItem();
+                MenuItem copyToAnalysisSlot = new();
                 copyToAnalysisSlot.Click += this.MenuEditCopyValuesToAnalysis_Click;
                 copyToAnalysisSlot.Header = analysisHeader;
                 copyToAnalysisSlot.InputGestureText = keyboardControlPrefix + displaySlotKeyName;
@@ -77,7 +80,7 @@ namespace Carnassial
                 copyToAnalysisSlot.ToolTip = App.FormatResource(Constant.ResourceKey.AnalysisAssignToolTip, displaySlot);
                 this.MenuEditCopyValuesToAnalysis.Items.Add(copyToAnalysisSlot);
 
-                MenuItem pasteFromAnalysisSlot = new MenuItem();
+                MenuItem pasteFromAnalysisSlot = new();
                 pasteFromAnalysisSlot.Click += this.MenuEditPasteFromAnalysis_Click;
                 pasteFromAnalysisSlot.Icon = new Image() { Source = Constant.Images.Paste.Value };
                 pasteFromAnalysisSlot.InputGestureText = displaySlotKeyName;
@@ -103,6 +106,7 @@ namespace Carnassial
             get
             {
                 Debug.Assert(this.IsFileDatabaseAvailable(), "State management failure: attempt to obtain folder path when database is unavailable.");
+                Debug.Assert(this.DataHandler != null);
                 return this.DataHandler.FileDatabase.FolderPath;
             }
         }
@@ -114,10 +118,11 @@ namespace Carnassial
             this.MenuEditUndo.IsEnabled = this.State.UndoRedoChain.CanUndo;
         }
 
-        private async void Backup_TimerTick(object sender, EventArgs e)
+        private async void Backup_TimerTick(object? sender, EventArgs e)
         {
             if (this.IsFileDatabaseAvailable())
             {
+                Debug.Assert(this.DataHandler != null);
                 if ((this.DataHandler.FileDatabase.BackupTask == null) || this.DataHandler.FileDatabase.BackupTask.IsCompleted)
                 {
                     await this.DataHandler.FileDatabase.TryBackupAsync().ConfigureAwait(true);
@@ -138,6 +143,7 @@ namespace Carnassial
                 this.State.BackupTimer.Stop();
 
                 // persist image set properties if an image set has been opened
+                Debug.Assert(this.DataHandler != null);
                 if (this.DataHandler.FileDatabase.CurrentlySelectedFileCount > 0)
                 {
                     // revert to custom selections to all 
@@ -161,6 +167,7 @@ namespace Carnassial
                     this.DataHandler.FileDatabase.TrySyncImageSetToDatabase();
 
                     // ensure custom filter operator is synchronized in state for writing to user's registry
+                    Debug.Assert((this.DataHandler != null) && (this.DataHandler.FileDatabase.CustomSelection != null));
                     this.State.CustomSelectionTermCombiningOperator = this.DataHandler.FileDatabase.CustomSelection.TermCombiningOperator;
                 }
 
@@ -205,12 +212,14 @@ namespace Carnassial
             this.RefreshDisplayedMarkers();
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         public void Dispose()
         {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         protected virtual void Dispose(bool disposing)
         {
             if (this.disposed)
@@ -239,10 +248,12 @@ namespace Carnassial
             bool filesSelected = false;
             if (imageSetAvailable)
             {
+                Debug.Assert(this.DataHandler != null);
                 filesSelected = this.DataHandler.FileDatabase.CurrentlySelectedFileCount > 0;
             }
 
             // enable/disable menus and menu items as appropriate depending upon whether files are selected
+            Debug.Assert(this.DataHandler != null);
             // file menu
             this.MenuFileAddFilesToImageSet.IsEnabled = imageSetAvailable;
             this.MenuFileLoadImageSet.IsEnabled = !imageSetAvailable;
@@ -312,7 +323,7 @@ namespace Carnassial
             this.FocusFileDisplay();
         }
 
-        private async void FileNavigatorSlider_TimerTick(object sender, EventArgs e)
+        private async void FileNavigatorSlider_TimerTick(object? sender, EventArgs e)
         {
             // display the current file as the user drags the navigation slider 
             await this.ShowFileAsync(this.FileNavigatorSlider).ConfigureAwait(true);
@@ -337,9 +348,11 @@ namespace Carnassial
             }
         }
 
-        private async void FilePlay_TimerTick(object sender, EventArgs e)
+        private async void FilePlay_TimerTick(object? sender, EventArgs e)
         {
             await this.ShowFileWithoutSliderCallbackAsync(true, ModifierKeys.None).ConfigureAwait(true);
+
+            Debug.Assert(this.DataHandler != null);
             if (this.DataHandler.ImageCache.CurrentRow == (this.DataHandler.FileDatabase.Files.RowCount - 1))
             {
                 // stop playing files since the end of the image set's been reached
@@ -347,7 +360,7 @@ namespace Carnassial
             }
             else
             {
-                this.DataHandler.FileDatabase.Files.TryGetPreviousFile(this.DataHandler.ImageCache.CurrentRow, out ImageRow previousFile);
+                this.DataHandler.FileDatabase.Files.TryGetPreviousFile(this.DataHandler.ImageCache.CurrentRow, out ImageRow? previousFile);
                 this.State.Throttles.SetFilePlayInterval(previousFile, this.DataHandler.ImageCache.Current);
             }
         }
@@ -366,7 +379,7 @@ namespace Carnassial
             this.FileDisplay.FileDisplay.Dock.Focus();
         }
 
-        private void FolderSelectionDialog_FolderChanging(object sender, CommonFileDialogFolderChangeEventArgs e)
+        private void FolderSelectionDialog_FolderChanging(object? sender, CommonFileDialogFolderChangeEventArgs e)
         {
             // require folders to be loaded be either the same folder as the .tdb and .ddb or subfolders of it
             if ((e.Folder == null) || (e.Folder.StartsWith(this.FolderPath, StringComparison.OrdinalIgnoreCase) == false))
@@ -380,20 +393,21 @@ namespace Carnassial
 
         private List<Marker> GetDisplayMarkers()
         {
-            List<Marker> markers = new List<Marker>();
+            List<Marker> markers = new();
             if (this.IsFileAvailable() == false)
             {
                 return markers;
             }
 
             // if no counter is selected that just indicates no markers need to be highlighted at this time
-            this.TryGetSelectedCounter(out DataEntryCounter selectedCounter);
+            this.TryGetSelectedCounter(out DataEntryCounter? selectedCounter);
             foreach (DataEntryControl control in this.DataEntryControls.ControlsByDataLabel.Values)
             {
                 if (control.Type != ControlType.Counter)
                 {
                     continue;
                 }
+                Debug.Assert(this.DataHandler != null);
                 MarkersForCounter markersForCounter = this.DataHandler.ImageCache.Current.GetMarkersForCounter(control.DataLabel);
 
                 // on mouse hover over a counter, emphasize markers associated with it
@@ -435,12 +449,13 @@ namespace Carnassial
 
         private async void Instructions_Drop(object sender, DragEventArgs dropEvent)
         {
-            if (this.IsSingleTemplateFileDrag(dropEvent, out string templateDatabaseFilePath))
+            if (ApplicationWindow.IsSingleTemplateFileDrag(dropEvent, out string? templateDatabaseFilePath))
             {
                 dropEvent.Handled = await this.TryOpenTemplateAndFileDatabaseAsync(templateDatabaseFilePath).ConfigureAwait(true);
             }
         }
 
+        [MemberNotNullWhen(true, nameof(DataHandler))]
         public bool IsFileAvailable()
         {
             if ((this.DataHandler == null) || (this.DataHandler.ImageCache == null))
@@ -487,15 +502,16 @@ namespace Carnassial
                 return;
             }
 
+            Debug.Assert(this.DataHandler != null);
             Dictionary<FileClassification, int> counts = this.DataHandler.FileDatabase.GetFileCountsByClassification();
-            FileCountsByClassification imageStats = new FileCountsByClassification(counts, this);
+            FileCountsByClassification imageStats = new(counts, this);
             if (onFileLoading)
             {
                 imageStats.Message.Hint.Inlines.Add(new Run(App.FindResource<string>(Constant.ResourceKey.FileCountsByClassificationMessageHint)));
                 imageStats.DontShowAgain.Visibility = Visibility.Visible;
             }
 
-            Nullable<bool> result = imageStats.ShowDialog();
+            bool? result = imageStats.ShowDialog();
             if (onFileLoading && (result == true) && imageStats.DontShowAgain.IsChecked.HasValue)
             {
                 this.State.SuppressFileCountOnImportDialog = imageStats.DontShowAgain.IsChecked.Value;
@@ -503,6 +519,7 @@ namespace Carnassial
             }
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         private void MaybeSpeak(string text)
         {
             if (this.State.AudioFeedback)
@@ -521,9 +538,10 @@ namespace Carnassial
         // - update the data held by the image
         // - update the list of markers held by that counter
         // - regenerate the list of markers used by the markableCanvas
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         private void MarkableCanvas_MarkerCreatedOrDeleted(object sender, MarkerCreatedOrDeletedEventArgs e)
         {
-            if (this.TryGetSelectedCounter(out DataEntryCounter selectedCounter) == false)
+            if (this.TryGetSelectedCounter(out DataEntryCounter? selectedCounter) == false)
             {
                 // mouse logic in MarkableCanvas sends marker create events based on mouse action and has no way of knowing if a counter is selected
                 // If no counter's selected there's no marker to create and the event can be ignored.
@@ -541,7 +559,7 @@ namespace Carnassial
 
             // add or remove the marker
             Debug.Assert(this.IsFileAvailable(), "Marker creation when no file is available.  Is the DataEntryCounter unexpectedly enabled?");
-            FileMarkerChange markerChange = new FileMarkerChange(this.DataHandler.ImageCache.Current.ID, e);
+            FileMarkerChange markerChange = new(this.DataHandler.ImageCache.Current.ID, e);
             markerChange.Execute(this);
             this.AddCommand(markerChange);
 
@@ -561,7 +579,7 @@ namespace Carnassial
         {
             if (this.IsFileAvailable())
             {
-                DataObject clipboardData = new DataObject(this.DataHandler.GetCopyableFieldsFromCurrentFile(this.DataEntryControls.Controls));
+                DataObject clipboardData = new(this.DataHandler.GetCopyableFieldsFromCurrentFile(this.DataEntryControls.Controls));
                 Clipboard.SetDataObject(clipboardData);
             }
         }
@@ -574,7 +592,8 @@ namespace Carnassial
         // Correct ambiguous dates dialog (i.e. dates that could be read as either month/day or day/month
         private async void MenuEditCorrectAmbiguousDates_Click(object sender, RoutedEventArgs e)
         {
-            DateCorrectAmbiguous ambiguousDateCorrection = new DateCorrectAmbiguous(this.DataHandler.FileDatabase, this);
+            Debug.Assert(this.DataHandler != null);
+            DateCorrectAmbiguous ambiguousDateCorrection = new(this.DataHandler.FileDatabase, this);
             if (ambiguousDateCorrection.Abort)
             {
                 MessageBox messageBox = MessageBox.FromResource(Constant.ResourceKey.CarnassialWindowNoAmbiguousDates, this);
@@ -587,14 +606,16 @@ namespace Carnassial
         /// <summary>Correct the date by specifying an offset.</summary>
         private async void MenuEditDateTimeFixedCorrection_Click(object sender, RoutedEventArgs e)
         {
-            DateTimeFixedCorrection fixedDateCorrection = new DateTimeFixedCorrection(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this);
+            Debug.Assert(this.DataHandler != null);
+            DateTimeFixedCorrection fixedDateCorrection = new(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this);
             await this.ShowBulkFileEditDialogAsync(fixedDateCorrection).ConfigureAwait(true);
         }
 
         /// <summary>Correct for drifting clock times. Correction applied only to selected files.</summary>
         private async void MenuEditDateTimeLinearCorrection_Click(object sender, RoutedEventArgs e)
         {
-            DateTimeLinearCorrection linearDateCorrection = new DateTimeLinearCorrection(this.DataHandler.FileDatabase, this);
+            Debug.Assert(this.DataHandler != null);
+            DateTimeLinearCorrection linearDateCorrection = new(this.DataHandler.FileDatabase, this);
             if (linearDateCorrection.Abort)
             {
                 MessageBox messageBox = MessageBox.FromResource(Constant.ResourceKey.CarnassialWindowClockDriftFailed, this);
@@ -607,6 +628,7 @@ namespace Carnassial
         /// <summary>Correct for daylight savings time.</summary>
         private async void MenuEditDaylightSavingsTimeCorrection_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
             if (this.DataHandler.ImageCache.Current.IsDisplayable() == false)
             {
                 // Just a corrupted image
@@ -615,7 +637,7 @@ namespace Carnassial
                 return;
             }
 
-            DateDaylightSavingsTimeCorrection daylightSavingsCorrection = new DateDaylightSavingsTimeCorrection(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this);
+            DateDaylightSavingsTimeCorrection daylightSavingsCorrection = new(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this);
             await this.ShowBulkFileEditDialogAsync(daylightSavingsCorrection).ConfigureAwait(true);
         }
 
@@ -632,19 +654,22 @@ namespace Carnassial
                 this.MenuEditDeleteCurrentFileAndData.IsEnabled = false;
             }
 
+            Debug.Assert(this.DataHandler != null);
             int deletedFiles = this.DataHandler.FileDatabase.Files.Count(file => file.DeleteFlag == true);
             this.MenuEditDeleteFiles.IsEnabled = deletedFiles > 0;
             this.MenuEditDeleteFilesAndData.IsEnabled = deletedFiles > 0;
         }
 
         /// <summary>Soft delete one or more files marked for deletion, and optionally the data associated with those files.</summary>
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         private async void MenuEditDeleteFiles_Click(object sender, RoutedEventArgs e)
         {
             MenuItem menuItem = (MenuItem)sender;
+            Debug.Assert(this.DataHandler != null);
 
             // this callback is invoked by DeleteCurrentFile and DeleteFiles
             // The logic therefore branches for removing a single file versus all selected files marked for deletion.
-            List<ImageRow> filesToDelete = new List<ImageRow>();
+            List<ImageRow> filesToDelete = new();
             bool deleteCurrentFileOnly;
             bool deleteFilesAndData;
             if (menuItem.Name.Equals(this.MenuEditDeleteFiles.Name, StringComparison.Ordinal) || menuItem.Name.Equals(this.MenuEditDeleteFilesAndData.Name, StringComparison.Ordinal))
@@ -674,7 +699,7 @@ namespace Carnassial
                 return;
             }
 
-            DeleteFiles deleteFilesDialog = new DeleteFiles(this.DataHandler.FileDatabase, filesToDelete, deleteFilesAndData, deleteCurrentFileOnly, this);
+            DeleteFiles deleteFilesDialog = new(this.DataHandler.FileDatabase, filesToDelete, deleteFilesAndData, deleteCurrentFileOnly, this);
             if (deleteFilesDialog.ShowDialog() == true)
             {
                 // cache the current ID and sync the current file to database as it may be invalidated
@@ -704,22 +729,24 @@ namespace Carnassial
             }
         }
 
-        private void MenuEditFind_Click(object sender, RoutedEventArgs e)
+        private void MenuEditFind_Click(object sender, RoutedEventArgs? e)
         {
-            FindReplace findReplace = new FindReplace(this);
+            FindReplace findReplace = new(this);
             findReplace.ShowDialog();
         }
 
-        public async void MenuEditFindNext_Click(object sender, RoutedEventArgs e)
+        public async void MenuEditFindNext_Click(object sender, RoutedEventArgs? e)
         {
+            Debug.Assert(this.DataHandler != null);
             if (this.DataHandler.TryFindNext(out int fileIndex))
             {
                 await this.ShowFileAsync(fileIndex).ConfigureAwait(true);
             }
         }
 
-        public async void MenuEditFindPrevious_Click(object sender, RoutedEventArgs e)
+        public async void MenuEditFindPrevious_Click(object sender, RoutedEventArgs? e)
         {
+            Debug.Assert(this.DataHandler != null);
             if (this.DataHandler.TryFindPrevious(out int fileIndex))
             {
                 await this.ShowFileAsync(fileIndex).ConfigureAwait(true);
@@ -729,7 +756,8 @@ namespace Carnassial
         /// <summary>Edit text in the image set log.</summary>
         private void MenuEditLog_Click(object sender, RoutedEventArgs e)
         {
-            EditLog editImageSetLog = new EditLog(this.DataHandler.FileDatabase.ImageSet.Log, this);
+            Debug.Assert(this.DataHandler != null);
+            EditLog editImageSetLog = new(this.DataHandler.FileDatabase.ImageSet.Log, this);
             if (editImageSetLog.ShowDialog() == true)
             {
                 this.DataHandler.FileDatabase.ImageSet.Log = editImageSetLog.Log.Text;
@@ -745,17 +773,17 @@ namespace Carnassial
             }
 
             IDataObject clipboardData = Clipboard.GetDataObject();
-            if (clipboardData == null || clipboardData.GetDataPresent(typeof(Dictionary<string, object>)) == false)
+            if (clipboardData == null || clipboardData.GetDataPresent(typeof(Dictionary<string, object?>)) == false)
             {
                 return;
             }
-            Dictionary<string, object> valuesFromClipboard = (Dictionary<string, object>)clipboardData.GetData(typeof(Dictionary<string, object>));
+            Dictionary<string, object?> valuesFromClipboard = (Dictionary<string, object?>)clipboardData.GetData(typeof(Dictionary<string, object?>));
             if (valuesFromClipboard == null)
             {
                 return;
             }
 
-            this.PasteValuesToCurrentFileWithUndo(new Dictionary<string, object>(valuesFromClipboard, StringComparer.Ordinal));
+            this.PasteValuesToCurrentFileWithUndo(new Dictionary<string, object?>(valuesFromClipboard, StringComparer.Ordinal));
         }
 
         private void MenuEditPasteFromAnalysis_Click(object sender, RoutedEventArgs e)
@@ -769,6 +797,7 @@ namespace Carnassial
         // populate a data field from metadata (example metadata displayed from the currently selected file)
         private async void MenuEditPopulateFieldFromMetadata_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
             if (this.DataHandler.ImageCache.Current.IsDisplayable() == false)
             {
                 int firstFileDisplayable = this.DataHandler.FileDatabase.GetCurrentOrNextDisplayableFile(this.DataHandler.ImageCache.CurrentRow);
@@ -781,16 +810,15 @@ namespace Carnassial
                 }
             }
 
-            PopulateFieldWithMetadata populateField = new PopulateFieldWithMetadata(this.DataHandler.FileDatabase, this.DataHandler.ImageCache.Current.GetFilePath(this.FolderPath), this.State.Throttles.GetDesiredProgressUpdateInterval(), this);
+            PopulateFieldWithMetadata populateField = new(this.DataHandler.FileDatabase, this.DataHandler.ImageCache.Current.GetFilePath(this.FolderPath), this.State.Throttles.GetDesiredProgressUpdateInterval(), this);
             await this.ShowBulkFileEditDialogAsync(populateField).ConfigureAwait(true);
         }
 
         private async void MenuEditReclassify_Click(object sender, RoutedEventArgs e)
         {
-            using (ReclassifyFiles reclassify = new ReclassifyFiles(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this.State, this))
-            {
-                await this.ShowBulkFileEditDialogAsync(reclassify).ConfigureAwait(true);
-            }
+            Debug.Assert(this.DataHandler != null);
+            using ReclassifyFiles reclassify = new(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this.State, this);
+            await this.ShowBulkFileEditDialogAsync(reclassify).ConfigureAwait(true);
         }
 
         internal async void MenuEditRedo_Click(object sender, RoutedEventArgs e)
@@ -825,14 +853,15 @@ namespace Carnassial
 
         private void MenuEditReplace_Click(object sender, RoutedEventArgs e)
         {
-            FindReplace findReplace = new FindReplace(this);
+            FindReplace findReplace = new(this);
             findReplace.FindReplaceTabs.SelectedItem = findReplace.ReplaceTab;
             findReplace.ShowDialog();
         }
 
         private async void MenuEditRereadDateTimesFromFiles_Click(object sender, RoutedEventArgs e)
         {
-            DateTimeRereadFromFiles rereadDates = new DateTimeRereadFromFiles(this.DataHandler.FileDatabase, this.State.Throttles.GetDesiredProgressUpdateInterval(), this);
+            Debug.Assert(this.DataHandler != null);
+            DateTimeRereadFromFiles rereadDates = new(this.DataHandler.FileDatabase, this.State.Throttles.GetDesiredProgressUpdateInterval(), this);
             await this.ShowBulkFileEditDialogAsync(rereadDates).ConfigureAwait(true);
         }
 
@@ -843,13 +872,14 @@ namespace Carnassial
                 return;
             }
 
-            Dictionary<string, object> defaultValues = ImageRow.GetDefaultValues(this.DataHandler.FileDatabase);
+            Dictionary<string, object?> defaultValues = ImageRow.GetDefaultValues(this.DataHandler.FileDatabase);
             this.MaybeExecuteMultipleFieldEdit(new FileMultipleFieldChange(this.DataHandler.ImageCache, defaultValues));
         }
 
         private async void MenuEditSetTimeZone_Click(object sender, RoutedEventArgs e)
         {
-            DateTimeSetTimeZone setTimeZone = new DateTimeSetTimeZone(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this);
+            Debug.Assert(this.DataHandler != null);
+            DateTimeSetTimeZone setTimeZone = new(this.DataHandler.FileDatabase, this.DataHandler.ImageCache, this);
             await this.ShowBulkFileEditDialogAsync(setTimeZone).ConfigureAwait(true);
         }
 
@@ -895,7 +925,7 @@ namespace Carnassial
 
         private async void MenuFileAddFilesToImageSet_Click(object sender, RoutedEventArgs e)
         {
-            if (this.ShowFolderSelectionDialog(out IEnumerable<string> folderPaths))
+            if (this.ShowFolderSelectionDialog(out IEnumerable<string>? folderPaths))
             {
                 await this.TryAddFilesAsync(folderPaths).ConfigureAwait(true);
             }
@@ -906,6 +936,8 @@ namespace Carnassial
         /// </summary>
         private void MenuFileCloneCurrent_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
+
             string sourcePath = this.DataHandler.ImageCache.Current.GetFilePath(this.FolderPath);
             if (File.Exists(sourcePath) == false)
             {
@@ -916,30 +948,28 @@ namespace Carnassial
 
             string sourceFileName = this.DataHandler.ImageCache.Current.FileName;
 
-            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            using SaveFileDialog saveFileDialog = new();
+            saveFileDialog.Title = App.FindResource<string>(Constant.ResourceKey.CarnassialWindowCopyFile);
+            saveFileDialog.Filter = String.Format(CultureInfo.CurrentCulture, "*{0}|*{0}", Path.GetExtension(this.DataHandler.ImageCache.Current.FileName));
+            saveFileDialog.FileName = sourceFileName;
+            saveFileDialog.OverwritePrompt = true;
+
+            if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                saveFileDialog.Title = App.FindResource<string>(Constant.ResourceKey.CarnassialWindowCopyFile);
-                saveFileDialog.Filter = String.Format(CultureInfo.CurrentCulture, "*{0}|*{0}", Path.GetExtension(this.DataHandler.ImageCache.Current.FileName));
-                saveFileDialog.FileName = sourceFileName;
-                saveFileDialog.OverwritePrompt = true;
+                // Set the source and destination file names, including the complete path
+                string destinationPath = saveFileDialog.FileName;
 
-                if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                // Try to copy the source file to the destination, overwriting the destination file if it already exists.
+                // And giving some feedback about its success (or failure) 
+                try
                 {
-                    // Set the source and destination file names, including the complete path
-                    string destinationPath = saveFileDialog.FileName;
-
-                    // Try to copy the source file to the destination, overwriting the destination file if it already exists.
-                    // And giving some feedback about its success (or failure) 
-                    try
-                    {
-                        File.Copy(sourcePath, destinationPath, true);
-                        this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusCopyFileCompleted, sourceFileName, destinationPath);
-                    }
-                    catch (IOException exception)
-                    {
-                        Debug.Fail(String.Format(CultureInfo.InvariantCulture, "Copy of '{0}' to '{1}' failed.", sourceFileName, destinationPath), exception.ToString());
-                        this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusCopyFileFailed, exception.GetType().Name);
-                    }
+                    File.Copy(sourcePath, destinationPath, true);
+                    this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusCopyFileCompleted, sourceFileName, destinationPath);
+                }
+                catch (IOException exception)
+                {
+                    Debug.Fail(String.Format(CultureInfo.InvariantCulture, "Copy of '{0}' to '{1}' failed.", sourceFileName, destinationPath), exception.ToString());
+                    this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusCopyFileFailed, exception.GetType().Name);
                 }
             }
         }
@@ -960,48 +990,49 @@ namespace Carnassial
 
         private async void MenuFileMoveFiles_Click(object sender, RoutedEventArgs e)
         {
-            using (CommonOpenFileDialog folderSelectionDialog = new CommonOpenFileDialog())
+            using CommonOpenFileDialog folderSelectionDialog = new();
+            folderSelectionDialog.Title = "Select the folder to move files to...";
+            folderSelectionDialog.DefaultDirectory = this.FolderPath;
+            folderSelectionDialog.InitialDirectory = this.FolderPath;
+            folderSelectionDialog.IsFolderPicker = true;
+            folderSelectionDialog.FolderChanging += this.FolderSelectionDialog_FolderChanging;
+
+            if (folderSelectionDialog.ShowDialog() == CommonFileDialogResult.Ok)
             {
-                folderSelectionDialog.Title = "Select the folder to move files to...";
-                folderSelectionDialog.DefaultDirectory = this.FolderPath;
-                folderSelectionDialog.InitialDirectory = this.FolderPath;
-                folderSelectionDialog.IsFolderPicker = true;
-                folderSelectionDialog.FolderChanging += this.FolderSelectionDialog_FolderChanging;
+                // flush any pending changes so MoveFilesToFolder() has clean state
+                Debug.Assert(this.DataHandler != null);
+                this.DataHandler.TrySyncCurrentFileToDatabase();
 
-                if (folderSelectionDialog.ShowDialog() == CommonFileDialogResult.Ok)
+                // move files
+                List<string> immovableFiles = this.DataHandler.FileDatabase.MoveSelectedFilesToFolder(folderSelectionDialog.FileName);
+                this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusMoveFilesComplete, this.DataHandler.FileDatabase.CurrentlySelectedFileCount - immovableFiles.Count, this.DataHandler.FileDatabase.CurrentlySelectedFileCount, Path.GetFileName(folderSelectionDialog.FileName));
+                if (immovableFiles.Count > 0)
                 {
-                    // flush any pending changes so MoveFilesToFolder() has clean state
-                    this.DataHandler.TrySyncCurrentFileToDatabase();
-
-                    // move files
-                    List<string> immovableFiles = this.DataHandler.FileDatabase.MoveSelectedFilesToFolder(folderSelectionDialog.FileName);
-                    this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusMoveFilesComplete, this.DataHandler.FileDatabase.CurrentlySelectedFileCount - immovableFiles.Count, this.DataHandler.FileDatabase.CurrentlySelectedFileCount, Path.GetFileName(folderSelectionDialog.FileName));
-                    if (immovableFiles.Count > 0)
+                    MessageBox messageBox = MessageBox.FromResource(Constant.ResourceKey.CarnassialWindowFileMoveIncomplete, this,
+                                                                    this.DataHandler.FileDatabase.CurrentlySelectedFileCount - immovableFiles.Count,
+                                                                    this.DataHandler.FileDatabase.CurrentlySelectedFileCount,
+                                                                    immovableFiles.Count);
+                    foreach (string fileName in immovableFiles)
                     {
-                        MessageBox messageBox = MessageBox.FromResource(Constant.ResourceKey.CarnassialWindowFileMoveIncomplete, this,
-                                                                        this.DataHandler.FileDatabase.CurrentlySelectedFileCount - immovableFiles.Count,
-                                                                        this.DataHandler.FileDatabase.CurrentlySelectedFileCount,
-                                                                        immovableFiles.Count);
-                        foreach (string fileName in immovableFiles)
-                        {
-                            messageBox.Message.Hint.Inlines.Add(new LineBreak());
-                            messageBox.Message.Hint.Inlines.Add(new Run("  \u2022 " + fileName));
-                        }
-                        messageBox.ShowDialog();
+                        messageBox.Message.Hint.Inlines.Add(new LineBreak());
+                        messageBox.Message.Hint.Inlines.Add(new Run("  \u2022 " + fileName));
                     }
-
-                    // refresh the current file to show its new relative path field 
-                    await this.ShowFileAsync(this.DataHandler.ImageCache.CurrentRow, false).ConfigureAwait(true);
-
-                    // clear undo/redo state as bulk edits aren't undoable
-                    this.OnBulkEdit(this, null);
+                    messageBox.ShowDialog();
                 }
+
+                // refresh the current file to show its new relative path field 
+                await this.ShowFileAsync(this.DataHandler.ImageCache.CurrentRow, false).ConfigureAwait(true);
+
+                // clear undo/redo state as bulk edits aren't undoable
+                this.OnBulkEdit(this, null);
             }
         }
 
         /// <summary>Write the .csv or .xlsx file and maybe send an open command to the system.</summary>
         private async void MenuFileExportSpreadsheet_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
+
             MenuItem menuItem = (MenuItem)sender;
             bool exportXlsx = (sender == this.MenuFileExportXlsxAndOpen) || (sender == this.MenuFileExportXlsx);
             if (exportXlsx && (this.DataHandler.FileDatabase.Files.RowCount > Constant.Excel.MaximumRowsInWorksheet))
@@ -1012,73 +1043,71 @@ namespace Carnassial
             string spreadsheetFileExtension = exportXlsx ? Constant.File.ExcelFileExtension : Constant.File.CsvFileExtension;
             string spreadsheetFileFilter = exportXlsx ? App.FindResource<string>(Constant.ResourceKey.ExcelFileFilter) : App.FindResource<string>(Constant.ResourceKey.CsvFileFilter);
 
-            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            using SaveFileDialog saveFileDialog = new();
+            saveFileDialog.AddExtension = true;
+            saveFileDialog.AutoUpgradeEnabled = true;
+            saveFileDialog.CheckPathExists = true;
+            saveFileDialog.CreatePrompt = false;
+            saveFileDialog.DefaultExt = spreadsheetFileExtension;
+            saveFileDialog.FileName = Path.GetFileNameWithoutExtension(this.DataHandler.FileDatabase.FileName);
+            saveFileDialog.InitialDirectory = this.FolderPath;
+            saveFileDialog.Filter = spreadsheetFileFilter;
+            saveFileDialog.OverwritePrompt = true;
+            saveFileDialog.Title = App.FindResource<string>(Constant.ResourceKey.CarnassialWindowExportSpreadsheet);
+
+            if (saveFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
             {
-                saveFileDialog.AddExtension = true;
-                saveFileDialog.AutoUpgradeEnabled = true;
-                saveFileDialog.CheckPathExists = true;
-                saveFileDialog.CreatePrompt = false;
-                saveFileDialog.DefaultExt = spreadsheetFileExtension;
-                saveFileDialog.FileName = Path.GetFileNameWithoutExtension(this.DataHandler.FileDatabase.FileName);
-                saveFileDialog.InitialDirectory = this.FolderPath;
-                saveFileDialog.Filter = spreadsheetFileFilter;
-                saveFileDialog.OverwritePrompt = true;
-                saveFileDialog.Title = App.FindResource<string>(Constant.ResourceKey.CarnassialWindowExportSpreadsheet);
-
-                if (saveFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-                {
-                    return;
-                }
-
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
-
-                bool openFileAfterExport = (sender == this.MenuFileExportXlsxAndOpen) || (sender == this.MenuFileExportCsvAndOpen);
-                string spreadsheetFileName = Path.GetFileName(saveFileDialog.FileName);
-                string spreadsheetFilePath = saveFileDialog.FileName;
-                this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusSpreadsheetExport, spreadsheetFileName);
-                SpreadsheetReaderWriter spreadsheetWriter = new SpreadsheetReaderWriter(this.UpdateImportOrExportProgress, this.State.Throttles.GetDesiredProgressUpdateInterval());
-                try
-                {
-                    await Task.Run(() =>
-                    {
-                        if (exportXlsx)
-                        {
-                            spreadsheetWriter.ExportFileDataToXlsx(this.DataHandler.FileDatabase, spreadsheetFilePath);
-                        }
-                        else
-                        {
-                            spreadsheetWriter.ExportFileDataToCsv(this.DataHandler.FileDatabase, spreadsheetFilePath);
-                        }
-                        stopwatch.Stop();
-
-                        if (openFileAfterExport)
-                        {
-                            // show the exported file in whatever program is associated with its extension
-                            Process process = new Process();
-                            process.StartInfo.UseShellExecute = true;
-                            process.StartInfo.RedirectStandardOutput = false;
-                            process.StartInfo.FileName = spreadsheetFilePath;
-                            process.Start();
-                        }
-                    }).ConfigureAwait(true);
-                }
-                catch (IOException exception)
-                {
-                    MessageBox messageBox = MessageBox.FromResource(Constant.ResourceKey.CarnassialWindowExportSpreadsheetFailed, this,
-                                                                    spreadsheetFilePath,
-                                                                    exception.GetType().FullName,
-                                                                    exception.Message);
-                    messageBox.ShowDialog();
-                    return;
-                }
-                finally
-                {
-                    this.HideLongRunningOperationFeedback();
-                }
-
-                this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusSpreadsheetExportCompleted, spreadsheetFileName, stopwatch.Elapsed.TotalSeconds, this.DataHandler.FileDatabase.CurrentlySelectedFileCount / stopwatch.Elapsed.TotalSeconds);
+                return;
             }
+
+            Stopwatch stopwatch = new();
+            stopwatch.Start();
+
+            bool openFileAfterExport = (sender == this.MenuFileExportXlsxAndOpen) || (sender == this.MenuFileExportCsvAndOpen);
+            string spreadsheetFileName = Path.GetFileName(saveFileDialog.FileName);
+            string spreadsheetFilePath = saveFileDialog.FileName;
+            this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusSpreadsheetExport, spreadsheetFileName);
+            SpreadsheetReaderWriter spreadsheetWriter = new(this.UpdateImportOrExportProgress, this.State.Throttles.GetDesiredProgressUpdateInterval());
+            try
+            {
+                await Task.Run(() =>
+                {
+                    if (exportXlsx)
+                    {
+                        spreadsheetWriter.ExportFileDataToXlsx(this.DataHandler.FileDatabase, spreadsheetFilePath);
+                    }
+                    else
+                    {
+                        spreadsheetWriter.ExportFileDataToCsv(this.DataHandler.FileDatabase, spreadsheetFilePath);
+                    }
+                    stopwatch.Stop();
+
+                    if (openFileAfterExport)
+                    {
+                            // show the exported file in whatever program is associated with its extension
+                            Process process = new();
+                        process.StartInfo.UseShellExecute = true;
+                        process.StartInfo.RedirectStandardOutput = false;
+                        process.StartInfo.FileName = spreadsheetFilePath;
+                        process.Start();
+                    }
+                }).ConfigureAwait(true);
+            }
+            catch (IOException exception)
+            {
+                MessageBox messageBox = MessageBox.FromResource(Constant.ResourceKey.CarnassialWindowExportSpreadsheetFailed, this,
+                                                                spreadsheetFilePath,
+                                                                exception.GetType().FullName,
+                                                                exception.Message);
+                messageBox.ShowDialog();
+                return;
+            }
+            finally
+            {
+                this.HideLongRunningOperationFeedback();
+            }
+
+            this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusSpreadsheetExportCompleted, spreadsheetFileName, stopwatch.Elapsed.TotalSeconds, this.DataHandler.FileDatabase.CurrentlySelectedFileCount / stopwatch.Elapsed.TotalSeconds);
         }
 
         private async void MenuFileImport_Click(object sender, RoutedEventArgs e)
@@ -1104,6 +1133,7 @@ namespace Carnassial
                 }
             }
 
+            Debug.Assert(this.DataHandler != null);
             string defaultSpreadsheetFileName = Path.GetFileNameWithoutExtension(this.DataHandler.FileDatabase.FileName) + Constant.File.ExcelFileExtension;
             if (CommonUserInterface.TryGetFileFromUser("Select a data file to merge into the current image set",
                                                        Path.Combine(this.DataHandler.FileDatabase.FolderPath, defaultSpreadsheetFileName),
@@ -1121,7 +1151,7 @@ namespace Carnassial
                 this.DataHandler.SelectFiles(FileSelection.All);
             }
 
-            Stopwatch stopwatch = new Stopwatch();
+            Stopwatch stopwatch = new();
             stopwatch.Start();
             this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusImport);
 
@@ -1135,7 +1165,7 @@ namespace Carnassial
             {
                 importResult = await Task.Run(() =>
                 {
-                    DataImportProgress importStatus = new DataImportProgress(this.UpdateImportOrExportProgress<DataImportProgress>, this.State.Throttles.GetDesiredProgressUpdateInterval());
+                    DataImportProgress importStatus = new(this.UpdateImportOrExportProgress<DataImportProgress>, this.State.Throttles.GetDesiredProgressUpdateInterval());
                     this.DataHandler.IsProgrammaticUpdate = true;
                     FileImportResult result = this.DataHandler.FileDatabase.TryImportData(otherDataFilePath, importStatus);
                     this.DataHandler.IsProgrammaticUpdate = false;
@@ -1144,7 +1174,7 @@ namespace Carnassial
             }
             else
             {
-                SpreadsheetReaderWriter spreadsheetReader = new SpreadsheetReaderWriter(this.UpdateImportOrExportProgress<SpreadsheetReadWriteStatus>, this.State.Throttles.GetDesiredProgressUpdateInterval());
+                SpreadsheetReaderWriter spreadsheetReader = new(this.UpdateImportOrExportProgress<SpreadsheetReadWriteStatus>, this.State.Throttles.GetDesiredProgressUpdateInterval());
                 importResult = await Task.Run(() =>
                 {
                     this.DataHandler.IsProgrammaticUpdate = true;
@@ -1209,7 +1239,7 @@ namespace Carnassial
         {
             // remove image sets which are no longer present from the most recently used list
             // probably overkill to perform this check on every refresh rather than once at application launch, but it's not particularly expensive
-            List<string> invalidPaths = new List<string>();
+            List<string> invalidPaths = new();
             foreach (string recentImageSetPath in this.State.MostRecentImageSets)
             {
                 if (File.Exists(recentImageSetPath) == false)
@@ -1233,7 +1263,7 @@ namespace Carnassial
             foreach (string recentImageSetPath in this.State.MostRecentImageSets)
             {
                 // Create a menu item for each path
-                MenuItem recentImageSetItem = new MenuItem();
+                MenuItem recentImageSetItem = new();
                 recentImageSetItem.Click += this.MenuFileRecentImageSet_Click;
                 recentImageSetItem.Header = String.Format(CultureInfo.CurrentCulture, "_{0} {1}", index++, recentImageSetPath);
                 recentImageSetItem.ToolTip = recentImageSetPath;
@@ -1243,7 +1273,8 @@ namespace Carnassial
 
         private void MenuFileRenameFileDatabase_Click(object sender, RoutedEventArgs e)
         {
-            RenameFileDatabaseFile renameFileDatabase = new RenameFileDatabaseFile(this.DataHandler.FileDatabase.FileName, this);
+            Debug.Assert(this.DataHandler != null);
+            RenameFileDatabaseFile renameFileDatabase = new(this.DataHandler.FileDatabase.FileName, this);
             if (renameFileDatabase.ShowDialog() == true)
             {
                 this.DataHandler.FileDatabase.RenameDatabaseFile(renameFileDatabase.NewFileName);
@@ -1259,7 +1290,7 @@ namespace Carnassial
         /// <summary>Display a message describing the version, etc.</summary> 
         private void MenuHelpAbout_Click(object sender, RoutedEventArgs e)
         {
-            About about = new About(this);
+            About about = new(this);
             if ((about.ShowDialog() == true) && about.MostRecentCheckForUpdate.HasValue)
             {
                 this.State.MostRecentCheckForUpdates = about.MostRecentCheckForUpdate.Value;
@@ -1269,7 +1300,7 @@ namespace Carnassial
         /// <summary>Show advanced Carnassial options.</summary>
         private void MenuOptionsAdvancedCarnassialOptions_Click(object sender, RoutedEventArgs e)
         {
-            AdvancedCarnassialOptions advancedCarnassialOptions = new AdvancedCarnassialOptions(this.State, this.FileDisplay, this);
+            AdvancedCarnassialOptions advancedCarnassialOptions = new(this.State, this.FileDisplay, this);
             if (advancedCarnassialOptions.ShowDialog() == true)
             {
                 // throttle may have changed; update rendering rate
@@ -1280,7 +1311,8 @@ namespace Carnassial
         /// <summary>Show advanced image set options.</summary>
         private void MenuOptionsAdvancedImageSetOptions_Click(object sender, RoutedEventArgs e)
         {
-            AdvancedImageSetOptions advancedImageSetOptions = new AdvancedImageSetOptions(this.DataHandler.FileDatabase, this);
+            Debug.Assert(this.DataHandler != null);
+            AdvancedImageSetOptions advancedImageSetOptions = new(this.DataHandler.FileDatabase, this);
             advancedImageSetOptions.ShowDialog();
         }
 
@@ -1310,7 +1342,8 @@ namespace Carnassial
                 return;
             }
 
-            FileOrdering orderingCommand = new FileOrdering(this.DataHandler.ImageCache);
+            Debug.Assert(this.DataHandler != null);
+            FileOrdering orderingCommand = new(this.DataHandler.ImageCache);
             await orderingCommand.ExecuteAsync(this).ConfigureAwait(true);
             this.State.UndoRedoChain.AddCommand(orderingCommand);
         }
@@ -1325,21 +1358,22 @@ namespace Carnassial
         {
             // the first time the custom selection dialog is launched update the DateTime and UtcOffset search terms to the time of the current file
             // Don't need to check CustomSelectionChange.HasChanges() as a change is guaranteed.
-            SearchTerm firstDateTimeSearchTerm = this.DataHandler.FileDatabase.CustomSelection.SearchTerms.FirstOrDefault(searchTerm => String.Equals(searchTerm.DataLabel, Constant.FileColumn.DateTime, StringComparison.Ordinal));
+            Debug.Assert((this.DataHandler != null) && (this.DataHandler.FileDatabase.CustomSelection != null));
+            SearchTerm? firstDateTimeSearchTerm = this.DataHandler.FileDatabase.CustomSelection.SearchTerms.FirstOrDefault(searchTerm => String.Equals(searchTerm.DataLabel, Constant.FileColumn.DateTime, StringComparison.Ordinal));
             if ((firstDateTimeSearchTerm != null) && ((DateTime)firstDateTimeSearchTerm.DatabaseValue == Constant.ControlDefault.DateTimeValue.UtcDateTime))
             {
-                Data.CustomSelection customSelectionInitialSnapshot = new Data.CustomSelection(this.DataHandler.FileDatabase.CustomSelection);
+                Data.CustomSelection customSelectionInitialSnapshot = new(this.DataHandler.FileDatabase.CustomSelection);
                 DateTimeOffset defaultDate = this.DataHandler.ImageCache.Current.DateTimeOffset;
                 this.DataHandler.FileDatabase.CustomSelection.SetDateTimesAndOffset(defaultDate);
                 this.AddCommand(new CustomSelectionChange(customSelectionInitialSnapshot, this.DataHandler.FileDatabase.CustomSelection));
             }
 
             // show the dialog and process the results
-            Data.CustomSelection customSelectionSnapshot = new Data.CustomSelection(this.DataHandler.FileDatabase.CustomSelection);
-            Dialog.CustomSelection customSelectionDialog = new Dialog.CustomSelection(this.DataHandler.FileDatabase, this);
+            Data.CustomSelection customSelectionSnapshot = new(this.DataHandler.FileDatabase.CustomSelection);
+            Dialog.CustomSelection customSelectionDialog = new(this.DataHandler.FileDatabase, this);
             if (customSelectionDialog.ShowDialog() == true)
             {
-                CustomSelectionChange customSelectionChange = new CustomSelectionChange(customSelectionSnapshot, this.DataHandler.FileDatabase.CustomSelection);
+                CustomSelectionChange customSelectionChange = new(customSelectionSnapshot, this.DataHandler.FileDatabase.CustomSelection);
                 if (customSelectionChange.HasChanges())
                 {
                     this.AddCommand(customSelectionChange);
@@ -1408,6 +1442,7 @@ namespace Carnassial
 
         private void MenuSelect_SubmenuOpening(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
             Dictionary<FileClassification, int> counts = this.DataHandler.FileDatabase.GetFileCountsByClassification();
 
             this.MenuSelectColorFiles.IsEnabled = counts[FileClassification.Color] > 0;
@@ -1427,8 +1462,10 @@ namespace Carnassial
         /// <summary>Toggle the magnifier on and off.</summary>
         private void MenuViewDisplayMagnifier_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
             bool displayMagnifier = this.DataHandler.FileDatabase.ImageSet.Options.HasFlag(ImageSetOptions.Magnifier);
             displayMagnifier = !displayMagnifier;
+
             this.DataHandler.FileDatabase.ImageSet.Options = this.DataHandler.FileDatabase.ImageSet.Options.SetFlag(ImageSetOptions.Magnifier, displayMagnifier);
             this.MenuViewDisplayMagnifier.IsChecked = displayMagnifier;
             this.FileDisplay.MagnifyingGlassEnabled = displayMagnifier;
@@ -1455,7 +1492,8 @@ namespace Carnassial
                 return;
             }
 
-            GoToFile goToFile = new GoToFile(this.DataHandler.ImageCache.CurrentRow, this.DataHandler.FileDatabase.CurrentlySelectedFileCount, this);
+            Debug.Assert(this.DataHandler != null);
+            GoToFile goToFile = new(this.DataHandler.ImageCache.CurrentRow, this.DataHandler.FileDatabase.CurrentlySelectedFileCount, this);
             if (goToFile.ShowDialog() == true)
             {
                 await this.ShowFileWithoutSliderCallbackAsync(goToFile.FileIndex).ConfigureAwait(true);
@@ -1470,7 +1508,7 @@ namespace Carnassial
             this.FileDisplay.MagnifierZoomOut();
         }
 
-        private void MenuViewPlayFiles_Click(object sender, RoutedEventArgs e)
+        private void MenuViewPlayFiles_Click(object sender, RoutedEventArgs? e)
         {
             // if this event doesn't result from a button click, toggle the play files button's state
             if (sender != this.PlayFilesButton)
@@ -1481,8 +1519,11 @@ namespace Carnassial
             // switch from not playing files to playing files or vice versa
             if (this.PlayFilesButton.IsChecked == true)
             {
-                this.DataHandler.FileDatabase.Files.TryGetPreviousFile(this.DataHandler.ImageCache.CurrentRow, out ImageRow previousFile);
-                this.State.Throttles.StartFilePlayTimer(previousFile, this.DataHandler.ImageCache.Current);
+                Debug.Assert(this.DataHandler != null);
+                if (this.DataHandler.FileDatabase.Files.TryGetPreviousFile(this.DataHandler.ImageCache.CurrentRow, out ImageRow? previousFile))
+                {
+                    this.State.Throttles.StartFilePlayTimer(previousFile, this.DataHandler.ImageCache.Current);
+                }
             }
             else
             {
@@ -1511,13 +1552,13 @@ namespace Carnassial
             await this.ShowFileWithoutSliderCallbackAsync(0).ConfigureAwait(true);
         }
 
-        private void MenuViewShowFiles_Click(object sender, RoutedEventArgs e)
+        private void MenuViewShowFiles_Click(object sender, RoutedEventArgs? e)
         {
             this.Tabs.SelectedIndex = 1;
             this.FocusFileDisplay();
         }
 
-        private void MenuViewShowInstructions_Click(object sender, RoutedEventArgs e)
+        private void MenuViewShowInstructions_Click(object sender, RoutedEventArgs? e)
         {
             this.Tabs.SelectedIndex = 0;
         }
@@ -1526,6 +1567,7 @@ namespace Carnassial
         {
             if (this.IsFileDatabaseAvailable())
             {
+                Debug.Assert(this.DataHandler != null);
                 await this.ShowFileWithoutSliderCallbackAsync(this.DataHandler.FileDatabase.CurrentlySelectedFileCount - 1).ConfigureAwait(true);
             }
         }
@@ -1555,6 +1597,7 @@ namespace Carnassial
         {
             if (this.IsFileDatabaseAvailable())
             {
+                Debug.Assert(this.DataHandler != null);
                 int increment = (int)(Constant.PageUpDownNavigationFraction * this.DataHandler.FileDatabase.CurrentlySelectedFileCount);
                 await this.ShowFileWithoutSliderCallbackAsync(this.DataHandler.ImageCache.CurrentRow + increment, increment).ConfigureAwait(true);
             }
@@ -1585,6 +1628,7 @@ namespace Carnassial
         {
             if (this.IsFileDatabaseAvailable())
             {
+                Debug.Assert(this.DataHandler != null);
                 int increment = -(int)(Constant.PageUpDownNavigationFraction * this.DataHandler.FileDatabase.CurrentlySelectedFileCount);
                 await this.ShowFileWithoutSliderCallbackAsync(this.DataHandler.ImageCache.CurrentRow + increment, increment).ConfigureAwait(true);
             }
@@ -1615,7 +1659,7 @@ namespace Carnassial
             IInputElement focusedElement = Keyboard.FocusedElement;
             if (focusedElement != null)
             {
-                if (DataEntryHandler.TryFindFocusedControl(focusedElement, out DataEntryControl focusedControl))
+                if (DataEntryHandler.TryFindFocusedControl(focusedElement, out DataEntryControl? focusedControl))
                 {
                     currentControlIndex = this.DataEntryControls.Controls.IndexOf(focusedControl);
                 }
@@ -1658,7 +1702,7 @@ namespace Carnassial
             this.State.MostRecentlyFocusedControlIndex = -1;
         }
 
-        public void OnBulkEdit(object sender, EventArgs e)
+        public void OnBulkEdit(object? sender, EventArgs? e)
         {
             // clear undo/redo state as bulk edits aren't undoable
             this.ResetUndoRedoState();
@@ -1669,6 +1713,7 @@ namespace Carnassial
             // set the file displayed to the one 
             // - from the previous session with the image set if the .ddb was just opened
             // - displayed prior to adding files to an image set
+            Debug.Assert(this.DataHandler != null);
             long mostRecentFileID = this.DataHandler.FileDatabase.ImageSet.MostRecentFileID;
             if (filesJustAdded)
             {
@@ -1700,22 +1745,27 @@ namespace Carnassial
             this.State.BackupTimer.Start();
         }
 
-        private void OnFileFieldChanged(object sender, PropertyChangedEventArgs fileChange)
+        private void OnFileFieldChanged(object? sender, PropertyChangedEventArgs fileChange)
         {
             if ((this.DataHandler != null) && this.DataHandler.IsProgrammaticUpdate)
             {
                 return;
             }
 
-            string propertyName = fileChange.PropertyName;
+            string? propertyName = fileChange.PropertyName;
             if (fileChange is IndexedPropertyChangedEventArgs<string> indexedChange)
             {
                 propertyName = indexedChange.Index;
             }
+            else if (propertyName == null)
+            {
+                throw new ArgumentOutOfRangeException(nameof(fileChange), "Property name is not specified.");
+            }
 
-            object previousValue = this.State.CurrentFileSnapshot[propertyName];
-            object newValue = this.DataHandler.ImageCache.Current[propertyName];
-            FileSingleFieldChange fileEdit = new FileSingleFieldChange(this.DataHandler.ImageCache.Current.ID, ImageRow.GetDataLabel(propertyName), propertyName, previousValue, newValue, true);
+            Debug.Assert(this.DataHandler != null);
+            object? previousValue = this.State.CurrentFileSnapshot[propertyName];
+            object? newValue = this.DataHandler.ImageCache.Current[propertyName];
+            FileSingleFieldChange fileEdit = new(this.DataHandler.ImageCache.Current.ID, ImageRow.GetDataLabel(propertyName), propertyName, previousValue, newValue, true);
             Debug.Assert((this.State.CurrentFileSnapshot.ContainsKey(propertyName) == false) || (this.State.CurrentFileSnapshot[propertyName] == fileEdit.PreviousValue), String.Format(CultureInfo.InvariantCulture, "Change tracking failure: previous value in file snapshot '{0}' does not match the previous value of the edit '{1}'.", this.State.CurrentFileSnapshot[propertyName], fileEdit.PreviousValue));
 
             if (fileEdit.HasChange())
@@ -1727,7 +1777,7 @@ namespace Carnassial
                 if (control.Type == ControlType.Note)
                 {
                     DataEntryNote noteControl = (DataEntryNote)control;
-                    if (noteControl.ContentControl.Autocompletions.Contains((string)fileEdit.NewValue, StringComparer.Ordinal) == false)
+                    if (noteControl.ContentControl.Autocompletions.Contains((string?)fileEdit.NewValue, StringComparer.Ordinal) == false)
                     {
                         // if needed, controls could be removed from the list in cases where a correction returns the field's value to one which is already
                         // a known autocomplete
@@ -1737,9 +1787,9 @@ namespace Carnassial
                 }
             }
         }
-
         private void OnFileSelectionChanged()
         {
+            Debug.Assert(this.DataHandler != null);
             FileSelection selection = this.DataHandler.FileDatabase.ImageSet.FileSelection;
 
             // update status and menu state to reflect what ended up being selected
@@ -1765,11 +1815,13 @@ namespace Carnassial
             this.FileNavigatorSlider_EnableOrDisableValueChangedCallback(true);
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            string databasePath = null;
+            string? databasePath = null;
             if (this.IsFileDatabaseAvailable())
             {
+                Debug.Assert(this.DataHandler != null);
                 databasePath = this.DataHandler.FileDatabase.FilePath;
             }
             this.ShowExceptionReportingDialog(null, databasePath, e);
@@ -1804,6 +1856,7 @@ namespace Carnassial
 
         private void PasteNextValues_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
             int nextIndex = this.DataHandler.ImageCache.CurrentRow + 1;
             if (this.DataHandler.FileDatabase.IsFileRowInRange(nextIndex) == false)
             {
@@ -1812,11 +1865,12 @@ namespace Carnassial
             }
 
             ImageRow nextFile = this.DataHandler.FileDatabase.Files[nextIndex];
-            this.PasteValuesToCurrentFileWithUndo(this.DataHandler.GetCopyableFields(nextFile, this.DataEntryControls.Controls));
+            this.PasteValuesToCurrentFileWithUndo(DataEntryHandler.GetCopyableFields(nextFile, this.DataEntryControls.Controls));
         }
 
         private void PastePreviousValues_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.DataHandler != null);
             int previousIndex = this.DataHandler.ImageCache.CurrentRow - 1;
             if (this.DataHandler.FileDatabase.IsFileRowInRange(previousIndex) == false)
             {
@@ -1825,11 +1879,12 @@ namespace Carnassial
             }
 
             ImageRow previousFile = this.DataHandler.FileDatabase.Files[previousIndex];
-            this.PasteValuesToCurrentFileWithUndo(this.DataHandler.GetCopyableFields(previousFile, this.DataEntryControls.Controls));
+            this.PasteValuesToCurrentFileWithUndo(DataEntryHandler.GetCopyableFields(previousFile, this.DataEntryControls.Controls));
         }
 
-        private void PasteValuesToCurrentFileWithUndo(Dictionary<string, object> values)
+        private void PasteValuesToCurrentFileWithUndo(Dictionary<string, object?> values)
         {
+            Debug.Assert(this.DataHandler != null);
             this.MaybeExecuteMultipleFieldEdit(new FileMultipleFieldChange(this.DataHandler.ImageCache, values));
             // remove any existing status message as it won't apply to the paste
             this.ClearStatusMessage();
@@ -1853,12 +1908,14 @@ namespace Carnassial
 
         public async Task SelectFilesAndShowFileAsync()
         {
+            Debug.Assert(this.DataHandler != null);
             Debug.Assert(this.IsFileDatabaseAvailable(), "Expected a file database to be available.");
             await this.SelectFilesAndShowFileAsync(this.DataHandler.FileDatabase.ImageSet.FileSelection).ConfigureAwait(true);
         }
 
         public async Task SelectFilesAndShowFileAsync(FileSelection selection)
         {
+            Debug.Assert(this.DataHandler != null);
             await this.SelectFilesAndShowFileAsync(this.DataHandler.ImageCache.GetCurrentFileID(), selection).ConfigureAwait(true);
         }
 
@@ -1870,6 +1927,7 @@ namespace Carnassial
         public async Task SelectFilesAndShowFileAsync(long fileID, FileSelection selection, bool generateUndoRedoCommands)
         {
             // record current selection for eventual insertion in undo/redo chain and change selection
+            Debug.Assert(this.DataHandler != null);
             Debug.Assert(this.IsFileDatabaseAvailable(), "SelectFilesAndShowFile() should not be reachable with a null data handler or database.  Is a menu item wrongly enabled?");
             long previousFileID = this.DataHandler.ImageCache.GetCurrentFileID();
             FileSelection previousSelection = this.DataHandler.FileDatabase.ImageSet.FileSelection;
@@ -1896,7 +1954,7 @@ namespace Carnassial
             await this.ShowFileAsync(this.DataHandler.FileDatabase.GetFileOrNextFileIndex(fileID), false).ConfigureAwait(true);
             if (generateUndoRedoCommands)
             {
-                FileSelectionChange selectionChange = new FileSelectionChange(this.DataHandler, previousSelection, previousFileID);
+                FileSelectionChange selectionChange = new(this.DataHandler, previousSelection, previousFileID);
                 if (selectionChange.HasChange())
                 {
                     this.AddCommand(selectionChange);
@@ -1908,7 +1966,7 @@ namespace Carnassial
         private void SetCurrentFile(int fileIndex)
         {
             StatusBarItem currentFile = (StatusBarItem)this.FileNavigation.Items[1];
-            currentFile.Content = this.ToDisplayIndex(fileIndex).ToString(CultureInfo.CurrentCulture);
+            currentFile.Content = CarnassialWindow.ToDisplayIndex(fileIndex).ToString(CultureInfo.CurrentCulture);
         }
 
         // set the total number of files
@@ -1918,7 +1976,7 @@ namespace Carnassial
             numberOfFiles.Content = selectedFileCount.ToString(CultureInfo.CurrentCulture);
         }
 
-        private void SetStatusMessage(string key, params object[] args)
+        private void SetStatusMessage(string key, params object?[] args)
         {
             this.MessageBar.Text = App.FormatResource(key, args);
         }
@@ -1943,6 +2001,7 @@ namespace Carnassial
                          (dialog.GetType() == typeof(PopulateFieldWithMetadata)),
                          String.Format(CultureInfo.InvariantCulture, "Unexpected dialog {0}.", dialog.GetType()));
 
+            Debug.Assert(this.DataHandler != null);
             this.DataHandler.TrySyncCurrentFileToDatabase();
             this.DataHandler.IsProgrammaticUpdate = true;
             if (dialog.ShowDialog() == true)
@@ -1990,7 +2049,7 @@ namespace Carnassial
         public async Task ShowFileAsync(int fileIndex, int prefetchStride, bool generateUndoRedoCommands)
         {
             // if there is no file to show, then show an image indicating no image set or an empty image set
-            if ((this.IsFileDatabaseAvailable() == false) || (this.DataHandler.FileDatabase.CurrentlySelectedFileCount < 1))
+            if ((this.IsFileDatabaseAvailable() == false) || (this.DataHandler!.FileDatabase.CurrentlySelectedFileCount < 1))
             {
                 this.FileDisplay.Display(Constant.Images.NoSelectableFileMessage);
                 this.RefreshDisplayedMarkers();
@@ -2060,7 +2119,7 @@ namespace Carnassial
             this.ClearStatusMessage();
 
             // update nav slider thumb's position to the current file
-            this.FileNavigatorSlider.Value = this.ToDisplayIndex(fileIndex);
+            this.FileNavigatorSlider.Value = CarnassialWindow.ToDisplayIndex(fileIndex);
 
             // display new file and update menu item enables if the file changed
             // This avoids unnecessary image reloads and refreshes in cases where ShowFile() is just being called to refresh controls.
@@ -2101,6 +2160,7 @@ namespace Carnassial
         internal async Task ShowFileWithoutSliderCallbackAsync(bool forward, ModifierKeys modifiers)
         {
             // determine how far to move and in which direction
+            Debug.Assert(this.DataHandler != null);
             int increment = CommonUserInterface.GetIncrement(forward, modifiers);
             int newFileIndex = this.DataHandler.ImageCache.CurrentRow + increment;
 
@@ -2117,6 +2177,7 @@ namespace Carnassial
             // if no change the file is already being displayed
             // For example, the end of the image set has been reached but key repeat means right arrow events are still coming in as the user hasn't
             // reacted yet.
+            Debug.Assert(this.DataHandler != null);
             if (newFileIndex == this.DataHandler.ImageCache.CurrentRow)
             {
                 return;
@@ -2138,9 +2199,9 @@ namespace Carnassial
             this.FileNavigatorSlider_EnableOrDisableValueChangedCallback(true);
         }
 
-        private bool ShowFolderSelectionDialog(out IEnumerable<string> folderPaths)
+        private bool ShowFolderSelectionDialog([NotNullWhen(true)] out IEnumerable<string>? folderPaths)
         {
-            using (CommonOpenFileDialog folderSelectionDialog = new CommonOpenFileDialog())
+            using (CommonOpenFileDialog folderSelectionDialog = new())
             {
                 folderSelectionDialog.Title = "Select one or more folders...";
                 folderSelectionDialog.DefaultDirectory = this.State.MostRecentFileAddFolderPath;
@@ -2157,7 +2218,7 @@ namespace Carnassial
                     // remember the parent of the selected folder path to save the user clicks and scrolling in case files from additional 
                     // directories are added later
                     // Moves above the location of the template file are disallowed, however.
-                    string parentFolderPath = Path.GetDirectoryName(folderPaths.First());
+                    string? parentFolderPath = Path.GetDirectoryName(folderPaths.First());
                     if ((parentFolderPath != null) && parentFolderPath.StartsWith(this.FolderPath, StringComparison.OrdinalIgnoreCase))
                     {
                         this.State.MostRecentFileAddFolderPath = parentFolderPath;
@@ -2170,7 +2231,7 @@ namespace Carnassial
             return false;
         }
 
-        private int ToDisplayIndex(int databaseIndex)
+        private static int ToDisplayIndex(int databaseIndex)
         {
             // +1 since database file indices are zero based but display file indices are ones based
             return databaseIndex + 1;
@@ -2199,7 +2260,7 @@ namespace Carnassial
         // out parameters can't be used in anonymous methods, so a separate pointer to backgroundWorker is required for return to the caller
         private async Task<bool> TryAddFilesAsync(IEnumerable<string> folderPaths)
         {
-            using (AddFilesIOComputeTransactionManager folderLoad = new AddFilesIOComputeTransactionManager(this.UpdateFolderLoadProgress, this.State.Throttles.GetDesiredProgressUpdateInterval()))
+            using (AddFilesIOComputeTransactionManager folderLoad = new(this.UpdateFolderLoadProgress, this.State.Throttles.GetDesiredProgressUpdateInterval()))
             {
                 folderLoad.FolderPaths.AddRange(folderPaths);
                 folderLoad.FindFilesToLoad(this.FolderPath);
@@ -2212,9 +2273,9 @@ namespace Carnassial
                         return false;
                     }
 
-                    if (this.ShowFolderSelectionDialog(out folderPaths))
+                    if (this.ShowFolderSelectionDialog(out IEnumerable<string>? folderPathFromDialog))
                     {
-                        return await this.TryAddFilesAsync(folderPaths).ConfigureAwait(true);
+                        return await this.TryAddFilesAsync(folderPathFromDialog).ConfigureAwait(true);
                     }
 
                     // exit if user changed their mind about trying again
@@ -2239,8 +2300,9 @@ namespace Carnassial
 
                 // ensure all files are selected
                 // This prevents files which are in the database but not selected from being added a second time.
-                Stopwatch stopwatch = new Stopwatch();
+                Stopwatch stopwatch = new();
                 stopwatch.Start();
+                Debug.Assert(this.DataHandler != null);
                 FileSelection originalSelection = this.DataHandler.FileDatabase.ImageSet.FileSelection;
                 if (originalSelection != FileSelection.All)
                 {
@@ -2278,16 +2340,17 @@ namespace Carnassial
             {
                 return false;
             }
-            Dictionary<string, object> analysisValuesByDataLabel = this.DataHandler.GetCopyableFieldsFromCurrentFile(this.DataEntryControls.Controls);
+
+            Dictionary<string, object?> analysisValuesByDataLabel = this.DataHandler.GetCopyableFieldsFromCurrentFile(this.DataEntryControls.Controls);
             this.State.Analysis[analysisSlot] = analysisValuesByDataLabel;
             ((MenuItem)this.MenuEditPasteValuesFromAnalysis.Items[analysisSlot]).IsEnabled = true;
 
-            HashSet<string> analysisLabelsByDataLabel = new HashSet<string>(this.DataHandler.FileDatabase.Controls.Where(control => control.AnalysisLabel).Select(control => control.DataLabel));
+            HashSet<string> analysisLabelsByDataLabel = new(this.DataHandler.FileDatabase.Controls.Where(control => control.AnalysisLabel).Select(control => control.DataLabel));
             this.AnalysisButtons.SetAnalysis(analysisSlot, analysisValuesByDataLabel, analysisLabelsByDataLabel);
             return true;
         }
 
-        private bool TryGetSelectedCounter(out DataEntryCounter selectedCounter)
+        private bool TryGetSelectedCounter([NotNullWhen(true)] out DataEntryCounter? selectedCounter)
         {
             foreach (DataEntryControl control in this.DataEntryControls.Controls)
             {
@@ -2317,7 +2380,7 @@ namespace Carnassial
                 return false;
             }
 
-            string templateDatabaseDirectoryPath = Path.GetDirectoryName(templateDatabasePath);
+            string? templateDatabaseDirectoryPath = Path.GetDirectoryName(templateDatabasePath);
             if (String.IsNullOrEmpty(templateDatabaseDirectoryPath))
             {
                 return false;
@@ -2335,7 +2398,7 @@ namespace Carnassial
         /// in unit tests.</remarks>
         public async Task<bool> TryOpenTemplateAndFileDatabaseAsync(string templateDatabasePath)
         {
-            Stopwatch imageSetSetupTime = new Stopwatch();
+            Stopwatch imageSetSetupTime = new();
             imageSetSetupTime.Start();
             bool templateLoadedOrCreated = TemplateDatabase.TryCreateOrOpen(templateDatabasePath, out TemplateDatabase templateDatabase);
             imageSetSetupTime.Stop();
@@ -2353,7 +2416,7 @@ namespace Carnassial
 
             // try to get the file database file path
             // addFiles will be true if it's a new file database (meaning the user will be prompted import some files)
-            if (this.TrySelectDatabaseFile(templateDatabasePath, out string fileDatabaseFilePath, out bool tryAddFiles) == false)
+            if (this.TrySelectDatabaseFile(templateDatabasePath, out string? fileDatabaseFilePath, out bool tryAddFiles) == false)
             {
                 // no file database was selected
                 templateDatabase.Dispose();
@@ -2364,7 +2427,7 @@ namespace Carnassial
             // In the event opening the file database is a long running operation this provides visual feedback the user's 
             // request to open an image set is being processed since the user can see the tab change and controls render.
             imageSetSetupTime.Start();
-            string fileDatabaseFileName = Path.GetFileName(fileDatabaseFilePath);
+            string? fileDatabaseFileName = Path.GetFileName(fileDatabaseFilePath);
             this.SetStatusMessage(Constant.ResourceKey.CarnassialWindowStatusImageSetOpening, fileDatabaseFileName);
             this.MenuViewShowFiles_Click(this, null);
 
@@ -2380,7 +2443,7 @@ namespace Carnassial
                 if ((fileDatabase != null) && (fileDatabase.ControlSynchronizationIssues.Count > 0))
                 {
                     // notify user the template and database are out of sync
-                    TemplateSynchronization templatesNotCompatibleDialog = new TemplateSynchronization(fileDatabase.ControlSynchronizationIssues, this);
+                    TemplateSynchronization templatesNotCompatibleDialog = new(fileDatabase.ControlSynchronizationIssues, this);
                     if (templatesNotCompatibleDialog.ShowDialog() != true)
                     {
                         // user indicated not to update to the current template or cancelled out of the dialog
@@ -2433,7 +2496,7 @@ namespace Carnassial
             }
 
             // load files from image set
-            Stopwatch fileLoadTime = new Stopwatch();
+            Stopwatch fileLoadTime = new();
             await Task.Run(() =>
             {
                 fileLoadTime.Start();
@@ -2459,14 +2522,14 @@ namespace Carnassial
 
         private bool TryPasteValuesFromAnalysis(int analysisSlot)
         {
-            Dictionary<string, object> valuesFromAnalysis = this.State.Analysis[analysisSlot];
+            Dictionary<string, object?>? valuesFromAnalysis = this.State.Analysis[analysisSlot];
             if (valuesFromAnalysis == null)
             {
                 // nothing to copy
                 return false;
             }
 
-            this.PasteValuesToCurrentFileWithUndo(new Dictionary<string, object>(valuesFromAnalysis, StringComparer.Ordinal));
+            this.PasteValuesToCurrentFileWithUndo(new Dictionary<string, object?>(valuesFromAnalysis, StringComparer.Ordinal));
             return true;
         }
 
@@ -2474,20 +2537,25 @@ namespace Carnassial
         // - true if a database file was specified
         // - databaseFilePath: the path to the data database file (or null if none was specified).
         // - addFiles: true when the database file has just been created, which means images still have to be imported.
-        private bool TrySelectDatabaseFile(string templateDatabasePath, out string databaseFilePath, out bool addFiles)
+        private bool TrySelectDatabaseFile(string templateDatabasePath, [NotNullWhen(true)] out string? databaseFilePath, out bool addFiles)
         {
             addFiles = false;
 
-            string databaseFileName;
-            string directoryPath = Path.GetDirectoryName(templateDatabasePath);
+            string? directoryPath = Path.GetDirectoryName(templateDatabasePath);
+            if (directoryPath == null)
+            {
+                throw new ArgumentOutOfRangeException(nameof(templateDatabasePath), String.Format(CultureInfo.CurrentCulture, "Failed to extract a directory from the template database path '{0}'. Is the file name of the template database missing?", templateDatabasePath));
+            }
             List<string> fileDatabasePaths = Directory.GetFiles(directoryPath, "*" + Constant.File.FileDatabaseFileExtension).Where(databasePath => Path.GetFileNameWithoutExtension(databasePath).EndsWith(Constant.Database.BackupFileNameSuffix, StringComparison.Ordinal) == false).ToList();
+
+            string databaseFileName;
             if (fileDatabasePaths.Count == 1)
             {
                 databaseFileName = Path.GetFileName(fileDatabasePaths[0]);
             }
             else if (fileDatabasePaths.Count > 1)
             {
-                ChooseFileDatabase chooseDatabaseFile = new ChooseFileDatabase(fileDatabasePaths, templateDatabasePath, this);
+                ChooseFileDatabase chooseDatabaseFile = new(fileDatabasePaths, templateDatabasePath, this);
                 if (chooseDatabaseFile.ShowDialog() == true)
                 {
                     databaseFileName = chooseDatabaseFile.SelectedFile;
@@ -2565,6 +2633,7 @@ namespace Carnassial
         private async Task TryViewPreviousOrNextDifferenceAsync()
         {
             // generate and cache difference image if needed
+            Debug.Assert(this.DataHandler != null);
             ImageDifferenceResult result = await this.DataHandler.ImageCache.TryMoveToNextDifferenceImageAsync(this.State.DifferenceThreshold).ConfigureAwait(true);
             switch (result)
             {
@@ -2623,6 +2692,7 @@ namespace Carnassial
             this.LongRunningFeedback.ProgressBar.Value = progress.GetPercentage();
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         private async void Window_Closing(object sender, CancelEventArgs e)
         {
             await this.CloseImageSetAsync().ConfigureAwait(true);
@@ -2649,7 +2719,7 @@ namespace Carnassial
                     return;
                 }
 
-                GithubReleaseClient updater = new GithubReleaseClient(Constant.ApplicationName, latestVersionAddress);
+                GithubReleaseClient updater = new(Constant.ApplicationName, latestVersionAddress);
                 updater.TryGetAndParseRelease(false, out Version _);
                 this.State.MostRecentCheckForUpdates = DateTime.UtcNow;
             }
@@ -2666,7 +2736,12 @@ namespace Carnassial
                 }
                 else if (filePath.EndsWith(Constant.File.FileDatabaseFileExtension, StringComparison.OrdinalIgnoreCase))
                 {
-                    string[] templatePaths = Directory.GetFiles(Path.GetDirectoryName(filePath), "*" + Constant.File.TemplateFileExtension);
+                    string? directoryPath = Path.GetDirectoryName(filePath);
+                    if (directoryPath == null)
+                    {
+                        throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unable to obtain directory from database file path '{0}'.", filePath));
+                    }
+                    string[] templatePaths = Directory.GetFiles(directoryPath, "*" + Constant.File.TemplateFileExtension);
                     if (templatePaths != null && templatePaths.Length == 1)
                     {
                         await this.TryOpenTemplateAndFileDatabaseAsync(templatePaths[0]).ConfigureAwait(true);
@@ -2937,6 +3012,7 @@ namespace Carnassial
                 case Key.End:
                     if (this.IsFileDatabaseAvailable())
                     {
+                        Debug.Assert(this.DataHandler != null);
                         currentKey.Handled = true;
                         await this.ShowFileWithoutSliderCallbackAsync(this.DataHandler.FileDatabase.CurrentlySelectedFileCount - 1).ConfigureAwait(true);
                     }
@@ -2955,6 +3031,7 @@ namespace Carnassial
                 case Key.PageDown:
                     if (this.IsFileDatabaseAvailable())
                     {
+                        Debug.Assert(this.DataHandler != null);
                         currentKey.Handled = true;
                         await this.ShowFileWithoutSliderCallbackAsync(this.DataHandler.ImageCache.CurrentRow + (int)(Constant.PageUpDownNavigationFraction * this.DataHandler.FileDatabase.CurrentlySelectedFileCount)).ConfigureAwait(true);
                     }
@@ -2962,6 +3039,7 @@ namespace Carnassial
                 case Key.PageUp:
                     if (this.IsFileDatabaseAvailable())
                     {
+                        Debug.Assert(this.DataHandler != null);
                         currentKey.Handled = true;
                         await this.ShowFileWithoutSliderCallbackAsync(this.DataHandler.ImageCache.CurrentRow - (int)(Constant.PageUpDownNavigationFraction * this.DataHandler.FileDatabase.CurrentlySelectedFileCount)).ConfigureAwait(true);
                     }
@@ -3020,6 +3098,7 @@ namespace Carnassial
                         if (utcNow - this.State.MostRecentRender > this.State.FileNavigatorSliderTimer.Interval)
                         {
                             // awaiting an async function within WndProc() bricks the UI, so fire it asynchronously
+                            Debug.Assert(this.DataHandler != null);
                             int increment = (int)(this.State.MouseHorizontalScrollDelta / Constant.Gestures.MouseHWheelStep);
                             int newFileIndex = this.DataHandler.ImageCache.CurrentRow + increment;
                             #pragma warning disable CS4014

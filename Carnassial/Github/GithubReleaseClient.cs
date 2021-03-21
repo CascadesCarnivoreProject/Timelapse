@@ -14,7 +14,7 @@ namespace Carnassial.Github
         private readonly string applicationName;
         private readonly Uri latestReleaseAddress;
 
-        public GithubReleaseClient(string applicationName, Uri latestRelease)
+        public GithubReleaseClient(string applicationName, Uri? latestRelease)
         {
             if (String.IsNullOrWhiteSpace(applicationName))
             {
@@ -26,11 +26,11 @@ namespace Carnassial.Github
         }
 
         // Checks for updates by comparing the current version number with a version stored on the Carnassial website in an xml file.
-        public bool TryGetAndParseRelease(bool showNoUpdatesMessage, out Version publiclyAvailableVersion)
+        public bool TryGetAndParseRelease(bool showNoUpdatesMessage, out Version? publiclyAvailableVersion)
         {
             publiclyAvailableVersion = null;
 
-            using (WebClient webClient = new WebClient())
+            using (WebClient webClient = new())
             {
                 webClient.Headers.Add(HttpRequestHeader.UserAgent, "Carnassial-GithubReleaseClient");
                 try
@@ -42,21 +42,17 @@ namespace Carnassial.Github
                         return false;
                     }
                     JsonSerializer serializer = JsonSerializer.CreateDefault();
-                    using (StringReader reader = new StringReader(releaseJson))
+                    using StringReader reader = new(releaseJson);
+                    using JsonReader jsonReader = new JsonTextReader(reader);
+                    GithubRelease? latestRelease = serializer.Deserialize<GithubRelease>(jsonReader);
+                    if (latestRelease == null || String.IsNullOrWhiteSpace(latestRelease.TagName))
                     {
-                        using (JsonReader jsonReader = new JsonTextReader(reader))
-                        {
-                            GithubRelease latestRelease = serializer.Deserialize<GithubRelease>(jsonReader);
-                            if (latestRelease == null || String.IsNullOrWhiteSpace(latestRelease.TagName))
-                            {
-                                return false;
-                            }
-                            // Version's parse implementation requires the leading v of Github convention be removed
-                            if (Version.TryParse(latestRelease.TagName.Substring(1), out publiclyAvailableVersion) == false)
-                            {
-                                return false;
-                            }
-                        }
+                        return false;
+                    }
+                    // Version's parse implementation requires the leading v of Github convention be removed
+                    if (Version.TryParse(latestRelease.TagName[1..], out publiclyAvailableVersion) == false)
+                    {
+                        return false;
                     }
                 }
                 catch (WebException exception)
@@ -76,7 +72,7 @@ namespace Carnassial.Github
             }
 
             // get the running version  
-            Version currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
+            Version? currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 
             // compare the versions  
             if (currentVersion < publiclyAvailableVersion)

@@ -8,7 +8,7 @@ using System.Windows;
 [assembly: AssemblyDescription("A tool to simplify analysis of images and videos from remote cameras.")]
 [assembly: AssemblyCompany("Cascades Carnivore Project")]
 [assembly: AssemblyProduct("Carnassial")]
-[assembly: AssemblyCopyright("Copyright © 2019 Cascades Carnivore Project")]
+[assembly: AssemblyCopyright("Copyright © 2016-2021 Cascades Carnivore Project")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

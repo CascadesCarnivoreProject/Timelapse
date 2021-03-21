@@ -8,7 +8,7 @@ namespace Carnassial.Util
     {
         public static Uri GetDevTeamEmailLink()
         {
-            UriBuilder mailto = new UriBuilder(Uri.UriSchemeMailto + ":" + ConfigurationManager.AppSettings[Constant.ApplicationSettings.DevTeamEmail])
+            UriBuilder mailto = new(Uri.UriSchemeMailto + ":" + ConfigurationManager.AppSettings[Constant.ApplicationSettings.DevTeamEmail])
             {
                 Query = String.Format(CultureInfo.InvariantCulture, "subject={0} {1}: feedback", Constant.ApplicationName, typeof(CarnassialConfigurationSettings).Assembly.GetName().Version)
             };
@@ -37,7 +37,7 @@ namespace Carnassial.Util
 
         private static Uri GetUriSetting(Uri baseAddress, string key, params string[] additionalPath)
         {
-            UriBuilder uriBuilder = new UriBuilder(baseAddress);
+            UriBuilder uriBuilder = new(baseAddress);
             uriBuilder.Path += ConfigurationManager.AppSettings[key];
             foreach (string token in additionalPath)
             {

@@ -23,9 +23,9 @@ namespace Carnassial.Control
             set { this.ContentControl.IsEnabled = !value; }
         }
 
-        public override bool IsCopyableValue(object value)
+        public override bool IsCopyableValue(object? value)
         {
-            return (bool)value;
+            return value != null && (bool)value;
         }
 
         public override void SetValue(object valueAsObject)

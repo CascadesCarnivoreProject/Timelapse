@@ -18,7 +18,7 @@ namespace Carnassial.Data
     {
         public AutocompletionCache AutocompletionCache { get; private set; }
         public List<string> ControlSynchronizationIssues { get; private set; }
-        public CustomSelection CustomSelection { get; set; }
+        public CustomSelection? CustomSelection { get; set; }
 
         /// <summary>Gets the file name of the database on disk.</summary>
         public string FileName { get; private set; }
@@ -72,7 +72,7 @@ namespace Carnassial.Data
             }
 
             // modify date/times
-            List<ImageRow> filesToAdjust = new List<ImageRow>();
+            List<ImageRow> filesToAdjust = new();
             TimeSpan mostRecentAdjustment = TimeSpan.Zero;
             for (int row = startIndex; row <= endIndex; ++row)
             {
@@ -102,15 +102,16 @@ namespace Carnassial.Data
                 }
 
                 // add log entry recording the change
-                StringBuilder log = new StringBuilder(Environment.NewLine);
+                StringBuilder log = new(Environment.NewLine);
                 log.AppendFormat(CultureInfo.CurrentCulture, "System entry: Adjusted dates and times of {0} selected files.{1}", filesToAdjust.Count, Environment.NewLine);
-                log.AppendFormat(CultureInfo.CurrentCulture, "The first file adjusted was '{0}', the last '{1}', and the last file was adjusted by {2}.{3}", filesToAdjust[0].FileName, filesToAdjust[filesToAdjust.Count - 1].FileName, mostRecentAdjustment, Environment.NewLine);
+                log.AppendFormat(CultureInfo.CurrentCulture, "The first file adjusted was '{0}', the last '{1}', and the last file was adjusted by {2}.{3}", filesToAdjust[0].FileName, filesToAdjust[^1].FileName, mostRecentAdjustment, Environment.NewLine);
                 this.AppendToImageSetLog(log);
             }
         }
 
         public void AppendToImageSetLog(StringBuilder logEntry)
         {
+            Debug.Assert(this.ImageSet != null);
             this.ImageSet.Log += logEntry;
             this.TrySyncImageSetToDatabase();
         }
@@ -142,7 +143,7 @@ namespace Carnassial.Data
 
         private Select CreateSelect(FileSelection selection)
         {
-            Select select = new Select(Constant.DatabaseTable.Files);
+            Select select = new(Constant.DatabaseTable.Files);
             switch (selection)
             {
                 case FileSelection.All:
@@ -170,6 +171,7 @@ namespace Carnassial.Data
                     select.Where.Add(new WhereClause(Constant.FileColumn.DeleteFlag, Constant.SqlOperator.Equal, true));
                     break;
                 case FileSelection.Custom:
+                    Debug.Assert(this.CustomSelection != null);
                     return this.CustomSelection.CreateSelect();
                 default:
                     throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled selection {0}.", selection));
@@ -188,9 +190,9 @@ namespace Carnassial.Data
 
             using (SQLiteTransaction transaction = this.Connection.BeginTransaction())
             {
-                using (SQLiteCommand deleteFiles = new SQLiteCommand(String.Format(CultureInfo.InvariantCulture, "DELETE FROM {0} WHERE {1} = @Id", Constant.DatabaseTable.Files, Constant.DatabaseColumn.ID), this.Connection, transaction))
+                using (SQLiteCommand deleteFiles = new(String.Format(CultureInfo.InvariantCulture, "DELETE FROM {0} WHERE {1} = @Id", Constant.DatabaseTable.Files, Constant.DatabaseColumn.ID), this.Connection, transaction))
                 {
-                    SQLiteParameter id = new SQLiteParameter("@Id");
+                    SQLiteParameter id = new("@Id");
                     deleteFiles.Parameters.Add(id);
 
                     foreach (long fileID in fileIDs)
@@ -229,9 +231,9 @@ namespace Carnassial.Data
             }
 
             // swap day and month for each file where it's possible
-            List<ImageRow> filesToUpdate = new List<ImageRow>();
+            List<ImageRow> filesToUpdate = new();
             ImageRow firstFile = this.Files[startRow];
-            ImageRow lastFile = null;
+            ImageRow? lastFile = null;
             DateTimeOffset mostRecentOriginalDateTime = DateTime.MinValue;
             DateTimeOffset mostRecentReversedDateTime = DateTime.MinValue;
             for (int row = startRow; row <= endRow; row++)
@@ -263,10 +265,10 @@ namespace Carnassial.Data
                     updateTransaction.Commit();
                 }
 
-                StringBuilder log = new StringBuilder(Environment.NewLine);
+                StringBuilder log = new(Environment.NewLine);
                 log.AppendFormat(CultureInfo.CurrentCulture, "System entry: Swapped days and months for {0} files.", filesToUpdate.Count);
                 log.AppendLine();
-                log.AppendFormat(CultureInfo.CurrentCulture, "The first file adjusted was '{0}' and the last '{1}'.", firstFile.FileName, lastFile.FileName);
+                log.AppendFormat(CultureInfo.CurrentCulture, "The first file adjusted was '{0}' and the last '{1}'.", firstFile.FileName, lastFile?.FileName);
                 log.AppendLine();
                 log.AppendFormat(CultureInfo.CurrentCulture, "The last file's date was changed from '{0}' to '{1}'.", DateTimeHandler.ToDisplayDateString(mostRecentOriginalDateTime), DateTimeHandler.ToDisplayDateString(mostRecentReversedDateTime));
                 log.AppendLine();
@@ -304,7 +306,7 @@ namespace Carnassial.Data
         {
             // try primary key lookup first as typically the requested ID will be present in the data table
             // (ideally the caller could use the ImageRow found directly, but this doesn't compose with index based navigation)
-            if (this.Files.TryFind(fileID, out ImageRow file, out int fileIndex))
+            if (this.Files.TryFind(fileID, out ImageRow? file, out int fileIndex))
             {
                 return fileIndex;
             }
@@ -351,8 +353,8 @@ namespace Carnassial.Data
 
         public FileTable GetFilesMarkedForDeletion()
         {
-            Select select = new Select(Constant.DatabaseTable.Files, new WhereClause(Constant.FileColumn.DeleteFlag, Constant.SqlOperator.Equal, Constant.Sql.TrueString));
-            FileTable filesToDelete = new FileTable();
+            Select select = new(Constant.DatabaseTable.Files, new WhereClause(Constant.FileColumn.DeleteFlag, Constant.SqlOperator.Equal, Constant.Sql.TrueString));
+            FileTable filesToDelete = new();
             filesToDelete.SetUserControls(this.Controls);
             this.LoadDataTableFromSelect(filesToDelete, select);
             return filesToDelete;
@@ -360,17 +362,22 @@ namespace Carnassial.Data
 
         public List<string> GetDistinctValuesInFileDataColumn(string dataLabel)
         {
-            List<string> distinctValues = new List<string>();
+            List<string> distinctValues = new();
             foreach (object value in this.GetDistinctValuesInColumn(Constant.DatabaseTable.Files, dataLabel))
             {
-                distinctValues.Add(value.ToString());
+                string? valueAsString = value.ToString();
+                if (valueAsString == null)
+                {
+                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Value in column {0} is unexpectedly null.", dataLabel));
+                }
+                distinctValues.Add(valueAsString);
             }
             return distinctValues;
         }
 
         public List<string> GetFileColumnNames()
         {
-            List<string> columns = new List<string>(this.Controls.RowCount);
+            List<string> columns = new(this.Controls.RowCount);
             foreach (ControlRow control in this.Controls)
             {
                 columns.Add(control.DataLabel);
@@ -399,14 +406,14 @@ namespace Carnassial.Data
 
         private int GetFileCount(FileClassification classification)
         {
-            Select select = new Select(Constant.DatabaseTable.Files);
+            Select select = new(Constant.DatabaseTable.Files);
             select.Where.Add(new WhereClause(Constant.FileColumn.Classification, Constant.SqlOperator.Equal, (int)classification));
             return (int)select.Count(this.Connection);
         }
 
         public Dictionary<FileClassification, int> GetFileCountsByClassification()
         {
-            Dictionary<FileClassification, int> counts = new Dictionary<FileClassification, int>()
+            Dictionary<FileClassification, int> counts = new()
             {
                 { FileClassification.Color, this.GetFileCount(FileClassification.Color) },
                 { FileClassification.Corrupt, this.GetFileCount(FileClassification.Corrupt) },
@@ -438,8 +445,8 @@ namespace Carnassial.Data
         {
             Debug.Assert(destinationFolderPath.StartsWith(this.FolderPath, StringComparison.OrdinalIgnoreCase), String.Format(CultureInfo.InvariantCulture, "Destination path '{0}' is not under '{1}'.", destinationFolderPath, this.FolderPath));
 
-            List<ImageRow> filesToUpdate = new List<ImageRow>();
-            List<string> immovableFiles = new List<string>();
+            List<ImageRow> filesToUpdate = new();
+            List<string> immovableFiles = new();
             foreach (ImageRow file in this.Files)
             {
                 Debug.Assert(file.HasChanges == false, "File has unexpected pending changes.");
@@ -465,7 +472,7 @@ namespace Carnassial.Data
         /// <summary>
         /// Make an empty file table based on the information in the controls table.
         /// </summary>
-        protected override void OnDatabaseCreated(TemplateDatabase templateDatabase)
+        protected override void OnDatabaseCreated(TemplateDatabase? templateDatabase)
         {
             // copy the template's controls and image set table
             base.OnDatabaseCreated(templateDatabase);
@@ -479,10 +486,11 @@ namespace Carnassial.Data
 
             // load in memory file table
             this.Files.SetUserControls(this.Controls);
+            Debug.Assert(this.ImageSet != null);
             this.SelectFiles(this.ImageSet.FileSelection);
         }
 
-        protected override bool OnExistingDatabaseOpened(TemplateDatabase templateDatabase)
+        protected override bool OnExistingDatabaseOpened(TemplateDatabase? templateDatabase)
         {
             // perform Controls and ImageSet initializations and migrations, then check for synchronization issues
             if (base.OnExistingDatabaseOpened(templateDatabase) == false)
@@ -527,10 +535,10 @@ namespace Carnassial.Data
                     if (choicesRemovedFromTemplate.Count > 0)
                     {
                         List<object> choicesInUse = this.GetDistinctValuesInColumn(Constant.DatabaseTable.Files, fileDatabaseControl.DataLabel);
-                        List<string> removedChoicesInUse = new List<string>();
+                        List<string> removedChoicesInUse = new();
                         if (String.Equals(dataLabel, Constant.FileColumn.Classification, StringComparison.Ordinal))
                         {
-                            List<FileClassification> classificationsInUse = new List<FileClassification>(choicesInUse.Select(choice => (FileClassification)choice));
+                            List<FileClassification> classificationsInUse = new(choicesInUse.Select(choice => (FileClassification)choice));
                             foreach (string removedChoice in choicesRemovedFromTemplate)
                             {
                                 if (ImageRow.TryParseFileClassification(removedChoice, out FileClassification classification))
@@ -544,7 +552,7 @@ namespace Carnassial.Data
                         }
                         else
                         {
-                            List<string> choiceStringsInUse = new List<string>(choicesInUse.Select(choice => (string)choice));
+                            List<string> choiceStringsInUse = new(choicesInUse.Select(choice => (string)choice));
                             foreach (string removedChoice in choicesRemovedFromTemplate)
                             {
                                 if (choiceStringsInUse.Contains(removedChoice, StringComparer.Ordinal))
@@ -570,8 +578,8 @@ namespace Carnassial.Data
                 using (SQLiteTransaction transaction = this.Connection.BeginTransaction())
                 {
                     // synchronize any changes in existing controls
-                    List<SecondaryIndex> indicesToCreate = new List<SecondaryIndex>();
-                    List<SecondaryIndex> indicesToDrop = new List<SecondaryIndex>();
+                    List<SecondaryIndex> indicesToCreate = new();
+                    List<SecondaryIndex> indicesToDrop = new();
                     using (ControlTransactionSequence synchronizeControls = ControlTransactionSequence.CreateUpdate(this, transaction))
                     {
                         foreach (string dataLabel in fileDataLabels)
@@ -686,26 +694,24 @@ namespace Carnassial.Data
             }
 
             // reconnect to database file
-            this.Connection = this.OpenConnection(newFilePath);
+            this.Connection = SQLiteDatabase.OpenConnection(newFilePath);
         }
 
         public int ReplaceAllInFiles(FileFindReplace findReplace)
         {
-            using (FileTransactionSequence updateFiles = this.CreateUpdateFileTransaction())
+            using FileTransactionSequence updateFiles = this.CreateUpdateFileTransaction();
+            foreach (ImageRow file in this.Files)
             {
-                foreach (ImageRow file in this.Files)
+                if (findReplace.Matches(file))
                 {
-                    if (findReplace.Matches(file))
+                    if (findReplace.TryReplace(file))
                     {
-                        if (findReplace.TryReplace(file))
-                        {
-                            updateFiles.AddFile(file);
-                        }
+                        updateFiles.AddFile(file);
                     }
                 }
-                updateFiles.Commit();
-                return updateFiles.RowsCommitted;
             }
+            updateFiles.Commit();
+            return updateFiles.RowsCommitted;
         }
 
         /// <summary> 
@@ -771,7 +777,7 @@ namespace Carnassial.Data
                 throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.FileDatabaseSelectionNotAll));
             }
 
-            string relativePathFromThisToOther = NativeMethods.GetRelativePathFromDirectoryToDirectory(Path.GetDirectoryName(this.FilePath), Path.GetDirectoryName(otherDatabasePath));
+            string? relativePathFromThisToOther = NativeMethods.GetRelativePathFromDirectoryToDirectory(Path.GetDirectoryName(this.FilePath), Path.GetDirectoryName(otherDatabasePath));
             if (String.Equals(relativePathFromThisToOther, Constant.File.CurrentDirectory, StringComparison.Ordinal))
             {
                 relativePathFromThisToOther = null;
@@ -781,135 +787,133 @@ namespace Carnassial.Data
                 throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Canonicalization of relative path from database to spreadsheet '{0}' is not currently supported.", relativePathFromThisToOther));
             }
 
-            FileImportResult result = new FileImportResult();
+            FileImportResult result = new();
             try
             {
-                using (FileDatabase other = new FileDatabase(otherDatabasePath))
+                using FileDatabase other = new(otherDatabasePath);
+                other.GetControlsSortedByControlOrder();
+
+                // validate file header against the database
+                List<string> columnsInOther = other.GetFileColumnNames();
+                List<string> columnsInThis = this.GetFileColumnNames();
+
+                List<string> columnsInThisButNotOther = columnsInThis.Except(columnsInOther).ToList();
+                foreach (string column in columnsInThisButNotOther)
                 {
-                    other.GetControlsSortedByControlOrder();
-
-                    // validate file header against the database
-                    List<string> columnsInOther = other.GetFileColumnNames();
-                    List<string> columnsInThis = this.GetFileColumnNames();
-
-                    List<string> columnsInThisButNotOther = columnsInThis.Except(columnsInOther).ToList();
-                    foreach (string column in columnsInThisButNotOther)
-                    {
-                        result.Errors.Add(App.FormatResource(Constant.ResourceKey.FileDatabaseImportThisColumnNotInOther, column));
-                    }
-
-                    List<string> columnsInOtherButNotThis = columnsInOther.Except(columnsInThis).ToList();
-                    foreach (string column in columnsInOtherButNotThis)
-                    {
-                        result.Errors.Add(App.FormatResource(Constant.ResourceKey.FileDatabaseImportOtherColumnNotInThis, column));
-                    }
-
-                    // validate user control data indices and types
-                    // Requiring indices match simplifies the implementation of ImageRow.SetValue(). If needed, a map similar to the
-                    // spreadsheet case can be used to accommodate changes in column ordering. However, it's expected such mismatches
-                    // will be rare and, if they do occur, they can be worked around with spreadsheet export and import.
-                    other.Files.SetUserControls(other.Controls);
-                    other.LoadImageSet();
-                    other.SelectFiles(FileSelection.All);
-                    foreach (KeyValuePair<string, FileTableColumn> thisColumn in this.Files.UserColumnsByName)
-                    {
-                        FileTableColumn otherColumn = other.Files.UserColumnsByName[thisColumn.Key];
-                        if ((thisColumn.Value.DataIndex != otherColumn.DataIndex) ||
-                            (thisColumn.Value.DataType != otherColumn.DataType))
-                        {
-                            result.Errors.Add(App.FormatResource(Constant.ResourceKey.FileDatabaseImportColumnLayoutMismatch, thisColumn.Key, thisColumn.Value.DataIndex, thisColumn.Value.DataType, otherColumn.DataIndex, otherColumn.DataType));
-                        }
-                    }
-
-                    if (result.Errors.Count > 0)
-                    {
-                        return result;
-                    }
-
-                    // merge files from the other database
-                    Dictionary<string, Dictionary<string, ImageRow>> filesAlreadyInThisByRelativePath = this.Files.GetFilesByRelativePathAndName();
-                    importStatus.BeginRead(other.Files.RowCount);
-
-                    FileTableColumnMap fileTableMap = new FileTableColumnMap(this.Files);
-                    List<ImageRow> filesToInsert = new List<ImageRow>();
-                    List<ImageRow> filesToUpdate = new List<ImageRow>();
-                    int filesUnchanged = 0;
-                    for (int fileIndex = 0, mostRecentReportCheck = 0; fileIndex < other.Files.RowCount; ++fileIndex)
-                    {
-                        ImageRow otherFile = other.Files[fileIndex];
-                        if (String.IsNullOrWhiteSpace(otherFile.FileName))
-                        {
-                            result.Errors.Add(String.Format(CultureInfo.CurrentCulture, "No file name found in row {0}.  Row skipped, database will not be updated for this file.", fileIndex));
-                            continue;
-                        }
-
-                        string relativePath = otherFile.RelativePath;
-                        if (relativePathFromThisToOther != null)
-                        {
-                            relativePath = Path.Combine(relativePathFromThisToOther, relativePath);
-                        }
-
-                        bool addFile = false;
-                        if ((filesAlreadyInThisByRelativePath.TryGetValue(relativePath, out Dictionary<string, ImageRow> filesInFolder) == false) ||
-                            (filesInFolder.TryGetValue(otherFile.FileName, out ImageRow thisFile) == false))
-                        {
-                            addFile = true;
-                            thisFile = this.Files.CreateAndAppendFile(otherFile.FileName, relativePath);
-                        }
-                        Debug.Assert(addFile || (thisFile.HasChanges == false), "Existing file unexpectedly has changes.");
-
-                        // move row data into file
-                        thisFile.SetValues(otherFile, fileTableMap, result);
-
-                        if (addFile)
-                        {
-                            filesToInsert.Add(thisFile);
-                        }
-                        else if (thisFile.HasChanges)
-                        {
-                            filesToUpdate.Add(thisFile);
-                        }
-                        else
-                        {
-                            ++filesUnchanged;
-                        }
-
-                        if (fileIndex - mostRecentReportCheck > Constant.File.RowsBetweenStatusReportChecks)
-                        {
-                            if (importStatus.ShouldUpdateProgress())
-                            {
-                                importStatus.QueueProgressUpdate(fileIndex);
-                            }
-                            mostRecentReportCheck = fileIndex;
-                        }
-                    }
-
-                    // perform inserts and updates
-                    int totalFiles = filesToInsert.Count + filesToUpdate.Count;
-                    importStatus.BeginTransactionCommit(totalFiles);
-                    if (filesToInsert.Count > 0)
-                    {
-                        using (FileTransactionSequence insertFiles = this.CreateInsertFileTransaction())
-                        {
-                            insertFiles.AddFiles(filesToInsert);
-                            insertFiles.Commit();
-                        }
-                        importStatus.QueueProgressUpdate(filesToInsert.Count);
-                    }
-                    if (filesToUpdate.Count > 0)
-                    {
-                        using (FileTransactionSequence updateFiles = this.CreateUpdateFileTransaction())
-                        {
-                            updateFiles.AddFiles(filesToUpdate);
-                            updateFiles.Commit();
-                        }
-                        importStatus.QueueProgressUpdate(totalFiles);
-                    }
-
-                    result.FilesAdded = filesToInsert.Count;
-                    result.FilesProcessed = filesToInsert.Count + filesToUpdate.Count + filesUnchanged;
-                    result.FilesUpdated = filesToUpdate.Count;
+                    result.Errors.Add(App.FormatResource(Constant.ResourceKey.FileDatabaseImportThisColumnNotInOther, column));
                 }
+
+                List<string> columnsInOtherButNotThis = columnsInOther.Except(columnsInThis).ToList();
+                foreach (string column in columnsInOtherButNotThis)
+                {
+                    result.Errors.Add(App.FormatResource(Constant.ResourceKey.FileDatabaseImportOtherColumnNotInThis, column));
+                }
+
+                // validate user control data indices and types
+                // Requiring indices match simplifies the implementation of ImageRow.SetValue(). If needed, a map similar to the
+                // spreadsheet case can be used to accommodate changes in column ordering. However, it's expected such mismatches
+                // will be rare and, if they do occur, they can be worked around with spreadsheet export and import.
+                other.Files.SetUserControls(other.Controls);
+                other.LoadImageSet();
+                other.SelectFiles(FileSelection.All);
+                foreach (KeyValuePair<string, FileTableColumn> thisColumn in this.Files.UserColumnsByName)
+                {
+                    FileTableColumn otherColumn = other.Files.UserColumnsByName[thisColumn.Key];
+                    if ((thisColumn.Value.DataIndex != otherColumn.DataIndex) ||
+                        (thisColumn.Value.DataType != otherColumn.DataType))
+                    {
+                        result.Errors.Add(App.FormatResource(Constant.ResourceKey.FileDatabaseImportColumnLayoutMismatch, thisColumn.Key, thisColumn.Value.DataIndex, thisColumn.Value.DataType, otherColumn.DataIndex, otherColumn.DataType));
+                    }
+                }
+
+                if (result.Errors.Count > 0)
+                {
+                    return result;
+                }
+
+                // merge files from the other database
+                Dictionary<string, Dictionary<string, ImageRow>> filesAlreadyInThisByRelativePath = this.Files.GetFilesByRelativePathAndName();
+                importStatus.BeginRead(other.Files.RowCount);
+
+                FileTableColumnMap fileTableMap = new(this.Files);
+                List<ImageRow> filesToInsert = new();
+                List<ImageRow> filesToUpdate = new();
+                int filesUnchanged = 0;
+                for (int fileIndex = 0, mostRecentReportCheck = 0; fileIndex < other.Files.RowCount; ++fileIndex)
+                {
+                    ImageRow otherFile = other.Files[fileIndex];
+                    if (String.IsNullOrWhiteSpace(otherFile.FileName))
+                    {
+                        result.Errors.Add(String.Format(CultureInfo.CurrentCulture, "No file name found in row {0}.  Row skipped, database will not be updated for this file.", fileIndex));
+                        continue;
+                    }
+
+                    string? relativePath = otherFile.RelativePath;
+                    if (relativePathFromThisToOther != null)
+                    {
+                        relativePath = Path.Combine(relativePathFromThisToOther, relativePath);
+                    }
+
+                    bool addFile = false;
+                    if ((filesAlreadyInThisByRelativePath.TryGetValue(relativePath, out Dictionary<string, ImageRow>? filesInFolder) == false) ||
+                        (filesInFolder.TryGetValue(otherFile.FileName, out ImageRow? thisFile) == false))
+                    {
+                        addFile = true;
+                        thisFile = this.Files.CreateAndAppendFile(otherFile.FileName, relativePath);
+                    }
+                    Debug.Assert(addFile || (thisFile.HasChanges == false), "Existing file unexpectedly has changes.");
+
+                    // move row data into file
+                    thisFile.SetValues(otherFile, fileTableMap, result);
+
+                    if (addFile)
+                    {
+                        filesToInsert.Add(thisFile);
+                    }
+                    else if (thisFile.HasChanges)
+                    {
+                        filesToUpdate.Add(thisFile);
+                    }
+                    else
+                    {
+                        ++filesUnchanged;
+                    }
+
+                    if (fileIndex - mostRecentReportCheck > Constant.File.RowsBetweenStatusReportChecks)
+                    {
+                        if (importStatus.ShouldUpdateProgress())
+                        {
+                            importStatus.QueueProgressUpdate(fileIndex);
+                        }
+                        mostRecentReportCheck = fileIndex;
+                    }
+                }
+
+                // perform inserts and updates
+                int totalFiles = filesToInsert.Count + filesToUpdate.Count;
+                importStatus.BeginTransactionCommit(totalFiles);
+                if (filesToInsert.Count > 0)
+                {
+                    using (FileTransactionSequence insertFiles = this.CreateInsertFileTransaction())
+                    {
+                        insertFiles.AddFiles(filesToInsert);
+                        insertFiles.Commit();
+                    }
+                    importStatus.QueueProgressUpdate(filesToInsert.Count);
+                }
+                if (filesToUpdate.Count > 0)
+                {
+                    using (FileTransactionSequence updateFiles = this.CreateUpdateFileTransaction())
+                    {
+                        updateFiles.AddFiles(filesToUpdate);
+                        updateFiles.Commit();
+                    }
+                    importStatus.QueueProgressUpdate(totalFiles);
+                }
+
+                result.FilesAdded = filesToInsert.Count;
+                result.FilesProcessed = filesToInsert.Count + filesToUpdate.Count + filesUnchanged;
+                result.FilesUpdated = filesToUpdate.Count;
             }
             catch (IOException ioException)
             {
@@ -955,8 +959,8 @@ namespace Carnassial.Data
                 throw new ArgumentOutOfRangeException(nameof(toIndex));
             }
 
-            object value = valueSource.GetDatabaseValue(control.DataLabel);
-            List<ImageRow> filesToUpdate = new List<ImageRow>(toIndex - fromIndex + 1);
+            object? value = valueSource.GetDatabaseValue(control.DataLabel);
+            List<ImageRow> filesToUpdate = new(toIndex - fromIndex + 1);
             for (int index = fromIndex; index <= toIndex; index++)
             {
                 // update data table
@@ -967,12 +971,10 @@ namespace Carnassial.Data
                 filesToUpdate.Add(file);
             }
 
-            using (UpdateFileColumnTransactionSequence updateFiles = this.CreateUpdateFileColumnTransaction(control.DataLabel))
-            {
-                updateFiles.UpdateFiles(filesToUpdate);
-                updateFiles.Commit();
-                return updateFiles.RowsCommitted;
-            }
+            using UpdateFileColumnTransactionSequence updateFiles = this.CreateUpdateFileColumnTransaction(control.DataLabel);
+            updateFiles.UpdateFiles(filesToUpdate);
+            updateFiles.Commit();
+            return updateFiles.RowsCommitted;
         }
 
         private void UpdateFileTableTo2203Schema(SQLiteTransaction transaction)

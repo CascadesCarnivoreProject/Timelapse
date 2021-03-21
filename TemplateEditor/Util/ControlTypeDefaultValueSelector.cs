@@ -1,4 +1,5 @@
 ﻿using Carnassial.Data;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -10,15 +11,16 @@ namespace Carnassial.Editor.Util
         {
             if (item is ControlRow control)
             {
-                switch (control.ControlType)
+                return control.ControlType switch
                 {
-                    case ControlType.FixedChoice:
-                        return (DataTemplate)App.Current.MainWindow.FindResource(EditorConstant.Resources.DefaultValueChoiceComboBox);
-                    case ControlType.Flag:
-                        return (DataTemplate)App.Current.MainWindow.FindResource(EditorConstant.Resources.DefaultValueFlagComboBox);
-                    default:
-                        return (DataTemplate)App.Current.MainWindow.FindResource(EditorConstant.Resources.DefaultValueTextBox);
-                }
+                    ControlType.FixedChoice => (DataTemplate)App.Current.MainWindow.FindResource(EditorConstant.Resources.DefaultValueChoiceComboBox),
+                    ControlType.Flag => (DataTemplate)App.Current.MainWindow.FindResource(EditorConstant.Resources.DefaultValueFlagComboBox),
+                    ControlType.Counter or 
+                    ControlType.DateTime or 
+                    ControlType.Note or 
+                    ControlType.UtcOffset => (DataTemplate)App.Current.MainWindow.FindResource(EditorConstant.Resources.DefaultValueTextBox),
+                    _ => throw new NotSupportedException("Unhandled control type " + control.ControlType + "."),
+                };
             }
 
             return base.SelectTemplate(item, container);

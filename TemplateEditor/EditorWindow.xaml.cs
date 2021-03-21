@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.Versioning;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -39,6 +40,7 @@ namespace Carnassial.Editor
         // database where the controls and image set defaults are stored
         private TemplateDatabase templateDatabase;
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         public EditorWindow()
         {
             App.Current.DispatcherUnhandledException += this.OnUnhandledException;
@@ -86,7 +88,7 @@ namespace Carnassial.Editor
 
             this.templateDatabase.AppendUserDefinedControl(controlType);
             this.ControlDataGrid.DataContext = this.templateDatabase.Controls;
-            this.ControlDataGrid.ScrollIntoView(this.ControlDataGrid.Items[this.ControlDataGrid.Items.Count - 1]);
+            this.ControlDataGrid.ScrollIntoView(this.ControlDataGrid.Items[^1]);
 
             this.RebuildControlPreview();
             this.SynchronizeSpreadsheetOrderPreview();
@@ -384,7 +386,7 @@ namespace Carnassial.Editor
 
         private void DataEntryControls_ControlOrderChangedByDragDrop(DataEntryControl controlBeingDragged, DataEntryControl dropTarget)
         {
-            Dictionary<string, int> newControlOrderByDataLabel = new Dictionary<string, int>(StringComparer.Ordinal);
+            Dictionary<string, int> newControlOrderByDataLabel = new(StringComparer.Ordinal);
             int controlOrder = 1;
             foreach (ControlRow control in this.templateDatabase.Controls)
             {
@@ -435,7 +437,7 @@ namespace Carnassial.Editor
             ControlRow choiceOrNote = this.templateDatabase.Controls.FirstOrDefault(control => control.ControlOrder == (int)button.Tag);
             Debug.Assert(choiceOrNote != null, String.Format(CultureInfo.InvariantCulture, "Control with tag {0} not found.", button.Tag));
 
-            EditWellKnownValues wellKnownValuesDialog = new EditWellKnownValues(button, choiceOrNote.GetWellKnownValues(), this);
+            EditWellKnownValues wellKnownValuesDialog = new(button, choiceOrNote.GetWellKnownValues(), this);
             if (wellKnownValuesDialog.ShowDialog() == true)
             {
                 choiceOrNote.SetWellKnownValues(wellKnownValuesDialog.Values);
@@ -526,7 +528,7 @@ namespace Carnassial.Editor
 
         private void Instructions_Drop(object sender, DragEventArgs dropEvent)
         {
-            if (this.IsSingleTemplateFileDrag(dropEvent, out string templateDatabaseFilePath))
+            if (ApplicationWindow.IsSingleTemplateFileDrag(dropEvent, out string templateDatabaseFilePath))
             {
                 this.InitializeDataGrid(templateDatabaseFilePath);
             }
@@ -561,22 +563,20 @@ namespace Carnassial.Editor
         /// </summary>
         private void MenuFileNewTemplate_Click(object sender, RoutedEventArgs e)
         {
-            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
-            {
-                saveFileDialog.AddExtension = true;
-                saveFileDialog.AutoUpgradeEnabled = true;
-                saveFileDialog.CheckPathExists = true;
-                saveFileDialog.CreatePrompt = false;
-                saveFileDialog.DefaultExt = Constant.File.TemplateFileExtension;
-                saveFileDialog.FileName = Path.GetFileNameWithoutExtension(Constant.File.DefaultTemplateDatabaseFileName);
-                saveFileDialog.Filter = App.FindResource<string>(EditorConstant.ResourceKey.EditorWindowTemplateFileFilter);
-                saveFileDialog.OverwritePrompt = true;
-                saveFileDialog.Title = App.FindResource<string>(EditorConstant.ResourceKey.EditorWindowTemplateFileSaveNew);
+            using SaveFileDialog saveFileDialog = new();
+            saveFileDialog.AddExtension = true;
+            saveFileDialog.AutoUpgradeEnabled = true;
+            saveFileDialog.CheckPathExists = true;
+            saveFileDialog.CreatePrompt = false;
+            saveFileDialog.DefaultExt = Constant.File.TemplateFileExtension;
+            saveFileDialog.FileName = Path.GetFileNameWithoutExtension(Constant.File.DefaultTemplateDatabaseFileName);
+            saveFileDialog.Filter = App.FindResource<string>(EditorConstant.ResourceKey.EditorWindowTemplateFileFilter);
+            saveFileDialog.OverwritePrompt = true;
+            saveFileDialog.Title = App.FindResource<string>(EditorConstant.ResourceKey.EditorWindowTemplateFileSaveNew);
 
-                if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                {
-                    this.InitializeDataGrid(saveFileDialog.FileName);
-                }
+            if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                this.InitializeDataGrid(saveFileDialog.FileName);
             }
         }
 
@@ -585,7 +585,7 @@ namespace Carnassial.Editor
         /// </summary>
         private void MenuFileOpenTemplate_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog()
+            OpenFileDialog openFileDialog = new()
             {
                 FileName = Path.GetFileNameWithoutExtension(Constant.File.DefaultTemplateDatabaseFileName),
                 DefaultExt = Constant.File.TemplateFileExtension,
@@ -617,7 +617,7 @@ namespace Carnassial.Editor
             int index = 1;
             foreach (string recentTemplatePath in this.userSettings.MostRecentTemplates)
             {
-                MenuItem recentImageSetItem = new MenuItem();
+                MenuItem recentImageSetItem = new();
                 recentImageSetItem.Click += this.MenuFileRecentTemplate_Click;
                 recentImageSetItem.Header = String.Format(CultureInfo.CurrentCulture, "_{0} {1}", index, recentTemplatePath);
                 recentImageSetItem.ToolTip = recentTemplatePath;
@@ -628,7 +628,7 @@ namespace Carnassial.Editor
 
         private void MenuHelpAbout_Click(object sender, RoutedEventArgs e)
         {
-            AboutEditor about = new AboutEditor(this);
+            AboutEditor about = new(this);
             if ((about.ShowDialog() == true) && about.MostRecentCheckForUpdate.HasValue)
             {
                 this.userSettings.MostRecentCheckForUpdates = about.MostRecentCheckForUpdate.Value;
@@ -637,7 +637,7 @@ namespace Carnassial.Editor
 
         private void MenuOptionsAdvancedImageSetOptions_Click(object sender, RoutedEventArgs e)
         {
-            AdvancedImageSetOptions advancedImageSetOptions = new AdvancedImageSetOptions(this.templateDatabase, this);
+            AdvancedImageSetOptions advancedImageSetOptions = new(this.templateDatabase, this);
             advancedImageSetOptions.ShowDialog();
         }
 
@@ -663,14 +663,14 @@ namespace Carnassial.Editor
         /// </summary>
         private void MenuViewInspectMetadata_Click(object sender, RoutedEventArgs e)
         {
-            InspectMetadata inspectMetadata = new InspectMetadata(this);
+            InspectMetadata inspectMetadata = new(this);
             inspectMetadata.ShowDialog();
         }
 
         private void OnSpreadsheetOrderChanged(object sender, DataGridColumnEventArgs e)
         {
             DataGrid dataGrid = (DataGrid)sender;
-            Dictionary<string, int> spreadsheetOrderByDataLabel = new Dictionary<string, int>(StringComparer.Ordinal);
+            Dictionary<string, int> spreadsheetOrderByDataLabel = new(StringComparer.Ordinal);
             for (int control = 0; control < dataGrid.Columns.Count; control++)
             {
                 string dataLabelFromColumnHeader = (string)dataGrid.Columns[control].Header;
@@ -681,6 +681,7 @@ namespace Carnassial.Editor
             this.templateDatabase.UpdateDisplayOrder(Constant.ControlColumn.SpreadsheetOrder, spreadsheetOrderByDataLabel);
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             string databasePath = null;
@@ -864,7 +865,7 @@ namespace Carnassial.Editor
                     return;
                 }
 
-                GithubReleaseClient updater = new GithubReleaseClient(EditorConstant.ApplicationName, latestVersionAddress);
+                GithubReleaseClient updater = new(EditorConstant.ApplicationName, latestVersionAddress);
                 updater.TryGetAndParseRelease(false, out Version _);
                 this.userSettings.MostRecentCheckForUpdates = DateTime.UtcNow;
             }
@@ -883,6 +884,7 @@ namespace Carnassial.Editor
             }
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         private void Window_Closing(object sender, CancelEventArgs e)
         {
             this.MenuFileCloseTemplate_Click(this, null);

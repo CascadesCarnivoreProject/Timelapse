@@ -22,7 +22,7 @@ namespace Carnassial.Control
 
         public override GeneralTransform GetDesiredTransform(GeneralTransform transform)
         {
-            GeneralTransformGroup result = new GeneralTransformGroup();
+            GeneralTransformGroup result = new();
             result.Children.Add(new TranslateTransform(this.position.X, this.position.Y));
             return result;
         }

@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using System.Runtime.Versioning;
 
 namespace Carnassial.Util
 {
@@ -14,6 +15,7 @@ namespace Carnassial.Util
             this.keyPath = keyPath;
         }
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         protected RegistryKey OpenRegistryKey()
         {
             RegistryKey registryKey = Registry.CurrentUser.OpenSubKey(this.keyPath, true);

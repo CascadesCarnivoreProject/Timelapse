@@ -4,7 +4,7 @@ namespace Carnassial.Dialog
 {
     internal class ObservableStatus<TResult> : FileIOComputeTransactionStatus
     {
-        public ObservableArray<TResult> FeedbackRows { get; set; }
+        public ObservableArray<TResult>? FeedbackRows { get; set; }
 
         public ObservableStatus()
         {

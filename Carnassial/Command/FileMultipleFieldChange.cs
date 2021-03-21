@@ -10,10 +10,10 @@ namespace Carnassial.Command
 {
     internal class FileMultipleFieldChange : FileChange
     {
-        private readonly Dictionary<string, object> newValuesByPropertyName;
-        private readonly Dictionary<string, object> previousValuesByPropertyName;
+        private readonly Dictionary<string, object?> newValuesByPropertyName;
+        private readonly Dictionary<string, object?> previousValuesByPropertyName;
 
-        public FileMultipleFieldChange(FileTableEnumerator fileEnumerator, Dictionary<string, object> newValuesByPropertyName)
+        public FileMultipleFieldChange(FileTableEnumerator fileEnumerator, Dictionary<string, object?> newValuesByPropertyName)
             : base(fileEnumerator.Current.ID)
         {
             Debug.Assert(fileEnumerator.IsFileAvailable, "File enumerator is not positioned on a file.");
@@ -23,12 +23,14 @@ namespace Carnassial.Command
             this.RemoveUnchangedFields();
         }
 
-        public FileMultipleFieldChange(Dictionary<string, object> previousValuesByPropertyName, FileTableEnumerator fileEnumerator)
+        public FileMultipleFieldChange(Dictionary<string, object?> previousValuesByPropertyName, FileTableEnumerator fileEnumerator)
             : base(fileEnumerator.Current.ID)
         {
             Debug.Assert(fileEnumerator.IsFileAvailable, "File enumerator is not positioned on a file.");
             Debug.Assert(previousValuesByPropertyName != null, "Previous state is empty.");
-            if ((long)previousValuesByPropertyName[Constant.DatabaseColumn.ID] != fileEnumerator.Current.ID)
+            object? previousID = previousValuesByPropertyName[Constant.DatabaseColumn.ID];
+            Debug.Assert(previousID != null);
+            if ((long)previousID != fileEnumerator.Current.ID)
             {
                 throw new ArgumentOutOfRangeException(nameof(previousValuesByPropertyName), String.Format(CultureInfo.CurrentCulture, "Previous state is for file {0} rather than {1}.", previousValuesByPropertyName[Constant.DatabaseColumn.ID], fileEnumerator.Current.ID));
             }
@@ -44,18 +46,18 @@ namespace Carnassial.Command
             get { return this.newValuesByPropertyName.Count; }
         }
 
-        private void ApplyValuesToCurrentFile(CarnassialWindow carnassial, Dictionary<string, object> valuesByPropertyName)
+        private void ApplyValuesToCurrentFile(CarnassialWindow carnassial, Dictionary<string, object?> valuesByPropertyName)
         {
             Debug.Assert(carnassial.IsFileAvailable(), "Attempt to edit file when no file is current.  Is a menu unexpectedly enabled?");
             Debug.Assert(this.FileID == carnassial.DataHandler.ImageCache.Current.ID, "Attempt to apply edit to a different file.");
 
             // OK if file ID doesn't match as values may be coming from the clipboard, the previous file, or analysis
             carnassial.DataHandler.IsProgrammaticUpdate = true;
-            foreach (KeyValuePair<string, object> singleFieldChange in valuesByPropertyName)
+            foreach (KeyValuePair<string, object?> singleFieldChange in valuesByPropertyName)
             {
                 string dataLabel = ImageRow.GetDataLabel(singleFieldChange.Key);
                 DataEntryControl control = carnassial.DataEntryControls.ControlsByDataLabel[dataLabel];
-                this.ApplyValueToFile(carnassial.DataHandler.ImageCache.Current, singleFieldChange.Key, singleFieldChange.Value, control, carnassial.State.CurrentFileSnapshot);
+                FileMultipleFieldChange.ApplyValueToFile(carnassial.DataHandler.ImageCache.Current, singleFieldChange.Key, singleFieldChange.Value, control, carnassial.State.CurrentFileSnapshot);
             }
             carnassial.DataHandler.IsProgrammaticUpdate = false;
         }
@@ -67,9 +69,9 @@ namespace Carnassial.Command
                 throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, "A multiple field change with {0} changes cannot be converted to a single field change.", this.Changes));
             }
 
-            KeyValuePair<string, object> newValue = this.newValuesByPropertyName.First();
-            object previousValue = this.previousValuesByPropertyName[newValue.Key];
-            FileSingleFieldChange singleChange = new FileSingleFieldChange(this.FileID, ImageRow.GetDataLabel(newValue.Key), newValue.Key, previousValue, newValue.Value, this.IsExecuted);
+            KeyValuePair<string, object?> newValue = this.newValuesByPropertyName.First();
+            object? previousValue = this.previousValuesByPropertyName[newValue.Key];
+            FileSingleFieldChange singleChange = new(this.FileID, ImageRow.GetDataLabel(newValue.Key), newValue.Key, previousValue, newValue.Value, this.IsExecuted);
             return singleChange;
         }
 
@@ -82,17 +84,17 @@ namespace Carnassial.Command
         private void RemoveUnchangedFields()
         {
             // remove any fields which have the same value in both the previous and new states
-            List<string> unchangedFields = new List<string>();
-            foreach (KeyValuePair<string, object> newValue in this.newValuesByPropertyName)
+            List<string> unchangedFields = new();
+            foreach (KeyValuePair<string, object?> newValue in this.newValuesByPropertyName)
             {
-                object previousValue = this.previousValuesByPropertyName[newValue.Key];
+                object? previousValue = this.previousValuesByPropertyName[newValue.Key];
                 bool previousValueNull = previousValue == null;
                 bool newValueNull = newValue.Value == null;
                 if (previousValueNull ^ newValueNull)
                 {
                     continue;
                 }
-                if ((previousValueNull && newValueNull) || previousValue.Equals(newValue.Value))
+                if ((previousValueNull && newValueNull) || previousValue!.Equals(newValue.Value))
                 {
                     unchangedFields.Add(newValue.Key);
                 }

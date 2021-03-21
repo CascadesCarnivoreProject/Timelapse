@@ -7,11 +7,11 @@ namespace Carnassial.Images
     {
         private bool disposed;
 
-        public static readonly FileLoad NoLoad = new FileLoad((string)null);
+        public static readonly FileLoad NoLoad = new(Constant.File.NoFileLoaded);
 
-        public ImageRow File { get; set; }
+        public ImageRow? File { get; set; }
         public string FileName { get; private set; }
-        public JpegImage Jpeg { get; set; }
+        public JpegImage? Jpeg { get; set; }
         public MetadataReadResults MetadataReadResult { get; set; }
 
         public FileLoad(ImageRow file)

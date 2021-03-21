@@ -1,6 +1,7 @@
 ﻿using Carnassial.Control;
 using Carnassial.Data;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Carnassial.Command
 {
@@ -13,7 +14,7 @@ namespace Carnassial.Command
             this.FileID = fileID;
         }
 
-        protected void ApplyValueToFile(ImageRow file, string propertyName, object value, DataEntryControl control, Dictionary<string, object> fileSnapshot)
+        protected static void ApplyValueToFile(ImageRow file, string propertyName, object? value, DataEntryControl control, Dictionary<string, object?> fileSnapshot)
         {
             if (control.Type == ControlType.Note)
             {
@@ -31,11 +32,13 @@ namespace Carnassial.Command
 
         public override bool CanExecute(CarnassialWindow carnassial)
         {
+            Debug.Assert(carnassial.DataHandler != null);
             return (this.IsExecuted == false) && (this.FileID == carnassial.DataHandler.ImageCache.GetCurrentFileID());
         }
 
         public override bool CanUndo(CarnassialWindow carnassial)
         {
+            Debug.Assert(carnassial.DataHandler != null);
             return this.IsExecuted && (this.FileID == carnassial.DataHandler.ImageCache.GetCurrentFileID());
         }
     }

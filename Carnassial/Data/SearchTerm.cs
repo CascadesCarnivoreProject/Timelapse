@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace Carnassial.Data
@@ -15,15 +16,15 @@ namespace Carnassial.Data
     {
         private ControlType controlType;
         private Type databaseColumnType;
-        private object databaseValue;
-        private string dataLabel;
-        private string label;
+        private object? databaseValue;
+        private string? dataLabel;
+        private string? label;
         private bool importanceHint;
         private string op;
         private Lazy<ObservableCollection<object>> wellKnownValues;
         private bool useForSearching;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public SearchTerm(ControlRow control)
         {
@@ -246,7 +247,7 @@ namespace Carnassial.Data
             throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled type {0}.", this.databaseColumnType));
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is SearchTerm searchTerm)
             {
@@ -304,12 +305,11 @@ namespace Carnassial.Data
         public List<string> GetOperators()
         {
             // keep in sync with FileFindReplace.Match*() and SearchTermPicker.LabelBox_SelectionChanged()
-            switch (this.ControlType)
+            return this.ControlType switch
             {
-                case ControlType.Counter:
-                case ControlType.DateTime:
-                case ControlType.FixedChoice:
-                    return new List<string>()
+                ControlType.Counter or 
+                ControlType.DateTime or 
+                ControlType.FixedChoice => new List<string>()
                     {
                         Constant.SearchTermOperator.Equal,
                         Constant.SearchTermOperator.NotEqual,
@@ -317,16 +317,13 @@ namespace Carnassial.Data
                         Constant.SearchTermOperator.GreaterThan,
                         Constant.SearchTermOperator.LessThanOrEqual,
                         Constant.SearchTermOperator.GreaterThanOrEqual
-                    };
-                case ControlType.Flag:
-                    return new List<string>()
+                    },
+                ControlType.Flag => new List<string>()
                     {
                         Constant.SearchTermOperator.Equal,
                         Constant.SearchTermOperator.NotEqual
-                    };
-                default:
-                    // notes
-                    return new List<string>()
+                    },
+                _ => new List<string>()
                     {
                         Constant.SearchTermOperator.Equal,
                         Constant.SearchTermOperator.NotEqual,
@@ -335,44 +332,29 @@ namespace Carnassial.Data
                         Constant.SearchTermOperator.LessThanOrEqual,
                         Constant.SearchTermOperator.GreaterThanOrEqual,
                         Constant.SearchTermOperator.Glob
-                    };
-            }
+                    },// notes
+            };
         }
 
         public WhereClause GetWhereClause()
         {
-            // convert operator from unicode to SQL expression
-            string sqlOperator;
-            switch (this.Operator)
+            string sqlOperator = this.Operator switch
             {
-                case Constant.SearchTermOperator.Equal:
-                    sqlOperator = Constant.SqlOperator.Equal;
-                    break;
-                case Constant.SearchTermOperator.Glob:
-                    sqlOperator = Constant.SqlOperator.Glob;
-                    break;
-                case Constant.SearchTermOperator.GreaterThan:
-                    sqlOperator = Constant.SqlOperator.GreaterThan;
-                    break;
-                case Constant.SearchTermOperator.GreaterThanOrEqual:
-                    sqlOperator = Constant.SqlOperator.GreaterThanOrEqual;
-                    break;
-                case Constant.SearchTermOperator.LessThan:
-                    sqlOperator = Constant.SqlOperator.LessThan;
-                    break;
-                case Constant.SearchTermOperator.LessThanOrEqual:
-                    sqlOperator = Constant.SqlOperator.LessThanOrEqual;
-                    break;
-                case Constant.SearchTermOperator.NotEqual:
-                    sqlOperator = Constant.SqlOperator.NotEqual;
-                    break;
-                default:
-                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled search term operator '{0}'.", this.Operator));
-            }
-
+                Constant.SearchTermOperator.Equal => Constant.SqlOperator.Equal,
+                Constant.SearchTermOperator.Glob => Constant.SqlOperator.Glob,
+                Constant.SearchTermOperator.GreaterThan => Constant.SqlOperator.GreaterThan,
+                Constant.SearchTermOperator.GreaterThanOrEqual => Constant.SqlOperator.GreaterThanOrEqual,
+                Constant.SearchTermOperator.LessThan => Constant.SqlOperator.LessThan,
+                Constant.SearchTermOperator.LessThanOrEqual => Constant.SqlOperator.LessThanOrEqual,
+                Constant.SearchTermOperator.NotEqual => Constant.SqlOperator.NotEqual,
+                _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled search term operator '{0}'.", this.Operator)),
+            };
             return new WhereClause(this.DataLabel, sqlOperator, this.DatabaseValue);
         }
 
+        [MemberNotNull(nameof(databaseColumnType))]
+        [MemberNotNull(nameof(op))]
+        [MemberNotNull(nameof(wellKnownValues))]
         public void SetControl(ControlRow control)
         {
             // set fields directly rather than through properties to suppress per-field change notifications
@@ -403,7 +385,7 @@ namespace Carnassial.Data
                     wellKnownStrings.Remove(FileClassification.Color.ToString());
                 }
 
-                ObservableCollection<object> wellKnownValues = new ObservableCollection<object>();
+                ObservableCollection<object> wellKnownValues = new();
                 foreach (string wellKnownString in wellKnownStrings)
                 {
                     wellKnownValues.Add(this.ConvertWellKnownValue(wellKnownString));

@@ -50,7 +50,7 @@ namespace Carnassial
 			// Since SetSource() uses drives image display destinations in Carnassial to WriteableBitmap it's typically most efficient to load images
 			// in a WriteableBitmap friendly format from the start.  The value here must be kept in sync with the value of PreferredPixelFormat along
 			// with the implementations of Difference(), IsDark(), and so on.
-			static const TJPF PreferredPixelFormat = TJPF_BGRA;
+			static const TJPF PreferredPixelFormat = TJPF::TJPF_BGRA;
 
 			static void SetDefaultConcurrencyPolicy(__int32 maximumConcurrency);
 

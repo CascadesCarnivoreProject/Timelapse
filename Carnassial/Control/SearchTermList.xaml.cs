@@ -2,6 +2,7 @@
 using Carnassial.Database;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -11,9 +12,9 @@ namespace Carnassial.Control
     public partial class SearchTermList : UserControl
     {
         private readonly Dictionary<string, ControlRow> controlsByLabel;
-        private FileDatabase fileDatabase;
+        private FileDatabase? fileDatabase;
 
-        public event Action QueryChanged;
+        public event Action? QueryChanged;
 
         public SearchTermList()
         {
@@ -25,7 +26,9 @@ namespace Carnassial.Control
 
         private void AndOrRadioButton_Checked(object sender, RoutedEventArgs args)
         {
-            RadioButton radioButton = sender as RadioButton;
+            Debug.Assert((this.fileDatabase != null) && (this.fileDatabase.CustomSelection != null));
+
+            RadioButton radioButton = (RadioButton)sender;
             LogicalOperator termCombiningOperator = (radioButton == this.TermCombiningAnd) ? LogicalOperator.And : LogicalOperator.Or;
             if (termCombiningOperator != this.fileDatabase.CustomSelection.TermCombiningOperator)
             {
@@ -43,7 +46,7 @@ namespace Carnassial.Control
             return this.controlsByLabel[label];
         }
 
-        public Nullable<LogicalOperator> GetCombiningOperatorForTerm(int termIndex)
+        public LogicalOperator? GetCombiningOperatorForTerm(int termIndex)
         {
             int lastEnabledTermIndex = -1;
             for (int index = this.SearchTerms.Items.Count - 1; index >= 0; --index)
@@ -60,6 +63,8 @@ namespace Carnassial.Control
             {
                 return null;
             }
+
+            Debug.Assert((this.fileDatabase != null) && (this.fileDatabase.CustomSelection != null));
             return this.fileDatabase.CustomSelection.TermCombiningOperator;
         }
 
@@ -96,6 +101,10 @@ namespace Carnassial.Control
 
         public void Populate(FileDatabase fileDatabase)
         {
+            if (fileDatabase.CustomSelection == null)
+            {
+                throw new ArgumentOutOfRangeException(nameof(fileDatabase));
+            }
             this.fileDatabase = fileDatabase;
 
             this.controlsByLabel.Clear();
@@ -114,10 +123,10 @@ namespace Carnassial.Control
             // labels tend to be unique at the control level but will be duplicated when multiple terms apply to a column
             // So access terms by index.
             int initialSelectionIndex = 0;
-            List<TextBlock> termLabels = new List<TextBlock>();
+            List<TextBlock> termLabels = new();
             foreach (SearchTerm searchTerm in this.fileDatabase.CustomSelection.SearchTerms)
             {
-                TextBlock labelBlock = new TextBlock(new Run(searchTerm.Label))
+                TextBlock labelBlock = new(new Run(searchTerm.Label))
                 {
                     Tag = searchTerm.Label
                 };
@@ -128,7 +137,7 @@ namespace Carnassial.Control
             {
                 // create and wire control for search term
                 SearchTerm searchTerm = this.fileDatabase.CustomSelection.SearchTerms[index];
-                SearchTermPicker termPicker = new SearchTermPicker(searchTerm, this, termLabels, index, this.fileDatabase.AutocompletionCache)
+                SearchTermPicker termPicker = new(searchTerm, this, termLabels, index, this.fileDatabase.AutocompletionCache)
                 {
                     TabIndex = index
                 };

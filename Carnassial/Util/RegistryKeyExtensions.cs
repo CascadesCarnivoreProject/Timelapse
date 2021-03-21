@@ -2,10 +2,12 @@
 using Microsoft.Win32;
 using System;
 using System.Globalization;
+using System.Runtime.Versioning;
 using System.Windows;
 
 namespace Carnassial.Util
 {
+    [SupportedOSPlatform(Constant.Platform.Windows)]
     public static class RegistryKeyExtensions
     {
         public static bool ReadBoolean(this RegistryKey registryKey, string subKeyPath, bool defaultValue)
@@ -110,6 +112,7 @@ namespace Carnassial.Util
             throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Registry key {0}\\{1} has unhandled type {2}.", registryKey.Name, subKeyPath, value.GetType().FullName));
         }
 
+        [SupportedOSPlatform("windows")]
         public static Rect ReadRect(this RegistryKey registryKey, string subKeyPath, Rect defaultValue)
         {
             string rectAsString = registryKey.ReadString(subKeyPath);
@@ -130,7 +133,7 @@ namespace Carnassial.Util
         public static MostRecentlyUsedList<string> ReadMostRecentlyUsedList(this RegistryKey registryKey, string subKeyPath)
         {
             RegistryKey subKey = registryKey.OpenSubKey(subKeyPath);
-            MostRecentlyUsedList<string> values = new MostRecentlyUsedList<string>(Constant.NumberOfMostRecentDatabasesToTrack);
+            MostRecentlyUsedList<string> values = new(Constant.NumberOfMostRecentDatabasesToTrack);
 
             if (subKey != null)
             {

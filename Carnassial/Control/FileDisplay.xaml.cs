@@ -80,8 +80,9 @@ namespace Carnassial.Control
             }
         }
 
-        public async Task DisplayAsync(string folderPath, ImageRow file)
+        public async Task DisplayAsync(string folderPath, ImageRow? file)
         {
+            Debug.Assert(file != null);
             if (file.IsVideo)
             {
                 this.Display(file.GetFileInfo(folderPath));
@@ -103,10 +104,8 @@ namespace Carnassial.Control
                     expectedDisplayWidth = (int)(4.0 / 3.0 * this.ActualHeight);
                 }
 
-                using (CachedImage image = await file.TryLoadImageAsync(folderPath, expectedDisplayWidth).ConfigureAwait(true))
-                {
-                    this.Display(image);
-                }
+                using CachedImage image = await file.TryLoadImageAsync(folderPath, expectedDisplayWidth).ConfigureAwait(true);
+                this.Display(image);
             }
         }
 

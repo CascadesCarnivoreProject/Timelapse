@@ -7,7 +7,7 @@ namespace Carnassial.Dialog
 {
     public partial class DateTimeRereadFromFiles : WindowWithSystemMenu
     {
-        private TimeSpan desiredStatusInterval;
+        private readonly TimeSpan desiredStatusInterval;
         private readonly FileDatabase fileDatabase;
 
         public DateTimeRereadFromFiles(FileDatabase fileDatabase, TimeSpan desiredStatusInterval, Window owner)
@@ -45,10 +45,10 @@ namespace Carnassial.Dialog
             this.StartDoneButton.Click += this.DoneButton_Click;
             this.StartDoneButton.IsEnabled = false;
 
-            ObservableArray<DateTimeRereadResult> feedbackRows = new ObservableArray<DateTimeRereadResult>(this.fileDatabase.Files.RowCount, DateTimeRereadResult.Default);
+            ObservableArray<DateTimeRereadResult> feedbackRows = new(this.fileDatabase.Files.RowCount, DateTimeRereadResult.Default);
             this.FeedbackGrid.ItemsSource = feedbackRows;
 
-            using (DateTimeRereadIOComputeTransactionManager rereadDateTimes = new DateTimeRereadIOComputeTransactionManager(this.ReportStatus, feedbackRows, this.desiredStatusInterval))
+            using (DateTimeRereadIOComputeTransactionManager rereadDateTimes = new(this.ReportStatus, feedbackRows, this.desiredStatusInterval))
             {
                 await rereadDateTimes.RereadDateTimesAsync(this.fileDatabase).ConfigureAwait(true);
             }

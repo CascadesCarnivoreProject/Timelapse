@@ -19,23 +19,16 @@ namespace Carnassial.Util
 
         public static string Convert(ControlType type)
         {
-            switch (type)
+            return type switch
             {
-                case ControlType.Counter:
-                    return "Counter";
-                case ControlType.DateTime:
-                    return "DateTime";
-                case ControlType.FixedChoice:
-                    return "FixedChoice";
-                case ControlType.Flag:
-                    return "Flag";
-                case ControlType.Note:
-                    return "Note";
-                case ControlType.UtcOffset:
-                    return "UtcOffset";
-                default:
-                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled control type {0}.", type));
-            }
+                ControlType.Counter => "Counter",
+                ControlType.DateTime => "DateTime",
+                ControlType.FixedChoice => "FixedChoice",
+                ControlType.Flag => "Flag",
+                ControlType.Note => "Note",
+                ControlType.UtcOffset => "UtcOffset",
+                _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled control type {0}.", type)),
+            };
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

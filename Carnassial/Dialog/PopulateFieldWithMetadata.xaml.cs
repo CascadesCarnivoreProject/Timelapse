@@ -27,10 +27,10 @@ namespace Carnassial.Dialog
         private string dataFieldLabel;
         private bool dataFieldSelected;
         private readonly Dictionary<string, string> dataLabelByLabel;
-        private TimeSpan desiredStatusInterval;
+        private readonly TimeSpan desiredStatusInterval;
         private readonly FileDatabase fileDatabase;
         private readonly string filePath;
-        private Tag metadataField;
+        private Tag? metadataField;
         private bool metadataFieldSelected;
 
         public PopulateFieldWithMetadata(FileDatabase fileDatabase, string filePath, TimeSpan desiredStatusInterval, Window owner)
@@ -93,7 +93,7 @@ namespace Carnassial.Dialog
         private async void PopulateButton_Click(object sender, RoutedEventArgs e)
         {
             // key/value pairs that will be bound to the datagrid feedback so they appear during background worker progress updates
-            ObservableArray<MetadataFieldResult> feedbackRows = new ObservableArray<MetadataFieldResult>(this.fileDatabase.Files.RowCount, MetadataFieldResult.Default);
+            ObservableArray<MetadataFieldResult> feedbackRows = new(this.fileDatabase.Files.RowCount, MetadataFieldResult.Default);
             this.FeedbackGrid.ItemsSource = feedbackRows;
 
             // switch UI to feedback datagrid
@@ -106,7 +106,7 @@ namespace Carnassial.Dialog
             this.PanelHeader.Visibility = Visibility.Collapsed;
 
             string dataLabel = this.dataLabelByLabel[this.dataFieldLabel];
-            MetadataIOComputeTransactionManager readMetadata = new MetadataIOComputeTransactionManager(this.ReportStatus, feedbackRows, this.desiredStatusInterval);
+            MetadataIOComputeTransactionManager readMetadata = new(this.ReportStatus, feedbackRows, this.desiredStatusInterval);
             await readMetadata.ReadFieldAsync(this.fileDatabase, dataLabel, this.metadataField, this.clearIfNoMetadata).ConfigureAwait(true);
 
             this.CancelDone.Content = "Done";

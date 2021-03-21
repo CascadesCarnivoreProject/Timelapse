@@ -35,10 +35,8 @@ namespace Carnassial.Database
         public void CreateTable(SQLiteConnection connection, SQLiteTransaction transaction)
         {
             string columnDefinitions = String.Join(", ", this.ColumnDefinitions.ConvertAll(columnDefinition => columnDefinition.ToString()));
-            using (SQLiteCommand command = new SQLiteCommand("CREATE TABLE " + this.Table + " (" + columnDefinitions + " )", connection, transaction))
-            {
-                command.ExecuteNonQuery();
-            }
+            using SQLiteCommand command = new("CREATE TABLE " + this.Table + " (" + columnDefinitions + " )", connection, transaction);
+            command.ExecuteNonQuery();
         }
 
         public void CreateTableAndIndicies(SQLiteConnection connection, SQLiteTransaction transaction)

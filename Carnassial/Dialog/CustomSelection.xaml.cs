@@ -2,6 +2,7 @@
 using Carnassial.Util;
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 
@@ -27,6 +28,7 @@ namespace Carnassial.Dialog
 
             // hook change notifications for search
             this.SearchTerms.QueryChanged += this.UpdateFileCount;
+            Debug.Assert(this.fileDatabase.CustomSelection != null);
             foreach (SearchTerm term in this.fileDatabase.CustomSelection.SearchTerms)
             {
                 term.PropertyChanged += this.UpdateFileCount;
@@ -47,6 +49,7 @@ namespace Carnassial.Dialog
 
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.fileDatabase.CustomSelection != null);
             // disable all search terms
             foreach (SearchTerm term in this.fileDatabase.CustomSelection.SearchTerms)
             {
@@ -61,13 +64,14 @@ namespace Carnassial.Dialog
             this.QueryMatches.Text = count > 0 ? count.ToString(CultureInfo.CurrentCulture) : "0";
         }
 
-        private void UpdateFileCount(object sender, PropertyChangedEventArgs e)
+        private void UpdateFileCount(object? sender, PropertyChangedEventArgs e)
         {
             this.UpdateFileCount();
         }
 
         private void Window_Closed(object sender, EventArgs e)
         {
+            Debug.Assert(this.fileDatabase.CustomSelection != null);
             // search terms are durable so unhook their property changed events
             for (int index = 0; index < this.fileDatabase.CustomSelection.SearchTerms.Count; ++index)
             {

@@ -14,7 +14,7 @@ namespace Carnassial.Control
         {
             this.FontWeight = FontWeights.Normal;
 
-            Dictionary<string, TimeZoneInfo> timeZones = new Dictionary<string, TimeZoneInfo>(StringComparer.Ordinal);
+            Dictionary<string, TimeZoneInfo> timeZones = new(StringComparer.Ordinal);
             foreach (TimeZoneInfo timeZone in TimeZoneInfo.GetSystemTimeZones())
             {
                 string timeZoneDisplayIdentifier = timeZone.DisplayName;

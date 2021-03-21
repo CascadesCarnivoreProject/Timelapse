@@ -6,7 +6,7 @@ namespace Carnassial.Images
     {
         public static bool Contains(this FrameworkElement frameworkElement, Point point)
         {
-            Rect extent = new Rect(0.0, 0.0, frameworkElement.ActualWidth, frameworkElement.ActualHeight);
+            Rect extent = new(0.0, 0.0, frameworkElement.ActualWidth, frameworkElement.ActualHeight);
             return extent.Contains(point);
         }
     }

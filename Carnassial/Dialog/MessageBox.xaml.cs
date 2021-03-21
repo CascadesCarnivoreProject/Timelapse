@@ -9,7 +9,7 @@ namespace Carnassial.Dialog
     {
         private MessageBoxButton buttonType;
 
-        private MessageBox(Message message, Window owner, params object[] args)
+        private MessageBox(Message message, Window owner, params object?[] args)
         {
             this.InitializeComponent();
             this.ButtonType = message.Buttons;
@@ -78,7 +78,7 @@ namespace Carnassial.Dialog
             this.DialogResult = false;
         }
 
-        public static MessageBox FromResource(string messageResourceKey, Window owner, params object[] args)
+        public static MessageBox FromResource(string messageResourceKey, Window owner, params object?[] args)
         {
             return new MessageBox(App.FindResource<Message>(messageResourceKey), owner, args);
         }

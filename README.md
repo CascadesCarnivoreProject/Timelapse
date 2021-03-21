@@ -37,8 +37,8 @@ within the operating system may cause rereading date times from files without me
 
 Known limitations with earlier versions of Windows:
 
-* Users may need to [install .NET 4.8 or newer](https://msdn.microsoft.com/en-us/library/bb822049.aspx) if it's not already present using, for
-example, the [.NET installer](https://www.microsoft.com/net/download/dotnet-framework-runtime).
+* Users may need to [install .NET 5.0 or newer](https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/versions-and-dependencies) if 
+it's not already present using, for example, the [.NET installer](https://dotnet.microsoft.com/download).
 * Users may need to [install the Universal C Runtime](https://www.microsoft.com/en-us/download/details.aspx?id=48234) if it or the Microsoft 
 Visual C++ 2015-2019 redistributable is not already installed.
 * Recycle Bin integration is untested on Windows 7.
@@ -59,7 +59,9 @@ The need to analyze remote camera data is a common one. In addition to Carnassia
 smoother in data entry but presently lacks equivalents to CPW's station information, occupancy analysis, and mark recapture analysis. 
 [CritterShell](https://github.com/CascadesCarnivoreProject/CritterShell) offers detection and occupancy analysis.
 * Carnassial is readily available. Obtaining the eMammal client requires a logon be issued, which can be hard to get.
-* Carnassial and Timelapse are broadly similar. As of March 2017 Carnassial offered faster analysis, more flexibility, and fewer defects than Timelapse.
+* Carnassial and Timelapse are broadly similar. As of March 2017, Carnassial offered faster analysis, more flexibility, and fewer defects than Timelapse.
+As of March 2021, episodes are the main Timelapse feature absent from Carnassial. Episodes are, however, equivalent to detections in CritterShell and
+require only a [dplyr](https://r4ds.had.co.nz/) `mutate()` statement to implement in R.
 
 If you know of other analysis tools please let us know.
 
@@ -67,25 +69,18 @@ If you know of other analysis tools please let us know.
 Feel free to open new issues on Carnassial here on github. Or email us at carnassialdev@gmail.com.
 
 ### Development Environment
-Install [Visual Studio 2019 Community](https://www.visualstudio.com/en-us/products/visual-studio-community-vs.aspx) or newer with the below options in 
-addition to the defaults:
-
-* .NET Framework 4.8 SDK and targeting pack
-* C++ MFC for v142 build tools (x86 & x64)
-* C++/CLI support for v142 build tools (latest)
-* Git for Windows and GitHub Extension for Visual Studio
-
-Higher Visual Studio SKUs such as Enterprise are fine. After Visual Studio installation:
+Install [Visual Studio 2019 Community](https://www.visualstudio.com/en-us/products/visual-studio-community-vs.aspx) or newer with the C#
+and C++ desktop workloads (other Visual Studio SKUs such as Enterprise are fine). After Visual Studio installation:
 
 * clone the repo locally through Visual Studio's Team Explorer or GitHub's clone or download options
-* install the [WiX Toolset](http://wixtoolset.org/releases/) 3.11 or later and Visual Studio WiX extension
+* install the [WiX Toolset](http://wixtoolset.org/releases/) 3.14 or later and Visual Studio WiX extension
 
 Commits should
 
 * include appropriate test coverage
 * have no build warnings or live code analysis messages
 
-Application and test development is done against .NET 4.8. Carnassial is a 64 bit app and for the most part only an x64 build is needed
+Application and test development is done against .NET 5.0. Carnassial is a 64 bit app and for the most part only an x64 build is needed
 for development and testing (the installer automatically rewires itself to build x86 under an x64 build). However, the Visual Studio 
 development UI is a 32 bit app and is therefore unable to load controls from the regular Carnassial build for display in the WPF designer. 
 As a result, Carnassial has a vestigial x86 build which needs to be selected when doing UI tasks if the view in the designer is to match 
@@ -96,6 +91,9 @@ rather than x64.)
 Historically, Visual Studio's discovery and honoring of test.runsettings has been unreliable, requiring manual selection of x64 test execution.
 In such situations VS can fail to find any unit tests until restarted, though setting x64 and forcing a build typically resulted in test 
 discovery. This appears to be less of an issue in Visual Studio 2018.
+
+Warning C4945 currently suppressed as it's raised erroneously in the Native project. This is a [known issue](https://docs.microsoft.com/en-us/dotnet/core/porting/cpp-cli).
+with referencing the Windows Preseantation Foundation in .NET 5.0 C++/CLI builds.
 
 Carnassial is not currently MVVM. In general, greater use of MVVM would be beneficial but current UX development effort is primarily directed
 to model-view adoption in order to enable refactoring to view models. Carnassial uses WPF resource dictionaries for localization as the 

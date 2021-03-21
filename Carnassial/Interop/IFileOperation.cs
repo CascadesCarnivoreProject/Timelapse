@@ -31,7 +31,7 @@ namespace Carnassial.Interop
         void CopyItem(IShellItem psiItem, IShellItem psiDestinationFolder, [MarshalAs(UnmanagedType.LPWStr)] string pszCopyName, IFileOperationProgressSink pfopsItem);
         void CopyItems([MarshalAs(UnmanagedType.Interface)] object punkItems, IShellItem psiDestinationFolder);
 
-        void DeleteItem(IShellItem psiItem, IFileOperationProgressSink pfopsItem);
+        void DeleteItem(IShellItem psiItem, IFileOperationProgressSink? pfopsItem);
         void DeleteItems([MarshalAs(UnmanagedType.Interface)] object punkItems);
 
         uint NewItem(IShellItem psiDestinationFolder, FileAttributes dwFileAttributes, [MarshalAs(UnmanagedType.LPWStr)] string pszName, [MarshalAs(UnmanagedType.LPWStr)] string pszTemplateName, IFileOperationProgressSink pfopsItem);

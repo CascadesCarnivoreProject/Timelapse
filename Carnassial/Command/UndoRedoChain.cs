@@ -6,7 +6,7 @@ namespace Carnassial.Command
     public class UndoRedoChain<TParameter>
     {
         private readonly LinkedList<UndoableCommand<TParameter>> chain;
-        private LinkedListNode<UndoableCommand<TParameter>> position;
+        private LinkedListNode<UndoableCommand<TParameter>>? position;
 
         public UndoRedoChain()
         {
@@ -45,10 +45,11 @@ namespace Carnassial.Command
             // remove any available redo chain as it's invalidated by the incoming undo
             if (this.CanRedo)
             {
-                for (LinkedListNode<UndoableCommand<TParameter>> nodeToRemove = this.chain.Last; nodeToRemove != this.position; nodeToRemove = this.chain.Last)
+                for (LinkedListNode<UndoableCommand<TParameter>>? nodeToRemove = this.chain.Last; nodeToRemove != this.position; nodeToRemove = this.chain.Last)
                 {
                     this.chain.RemoveLast();
                 }
+                Debug.Assert(this.position != null);
                 if (this.position.Value.IsExecuted == false)
                 {
                     this.chain.RemoveLast();
@@ -65,7 +66,7 @@ namespace Carnassial.Command
             this.position = null;
         }
 
-        public bool TryMoveToNextRedo(out UndoableCommand<TParameter> state)
+        public bool TryMoveToNextRedo(out UndoableCommand<TParameter>? state)
         {
             if (this.CanRedo == false)
             {
@@ -73,16 +74,17 @@ namespace Carnassial.Command
                 return false;
             }
 
+            Debug.Assert(this.position != null);
             if (this.position.Value.IsExecuted)
             {
                 this.position = this.position.Next;
-                Debug.Assert(this.position.Value.IsExecuted == false, "Redid to a command which has been executed.");
+                Debug.Assert((this.position != null) && (this.position.Value.IsExecuted == false), "Redid to a command which has been executed.");
             }
-            state = this.position.Value;
+            state = this.position?.Value;
             return true;
         }
 
-        public bool TryMoveToNextUndo(out UndoableCommand<TParameter> state)
+        public bool TryMoveToNextUndo(out UndoableCommand<TParameter>? state)
         {
             if (this.CanUndo == false)
             {
@@ -90,10 +92,11 @@ namespace Carnassial.Command
                 return false;
             }
 
+            Debug.Assert(this.position != null);
             if (this.position.Value.IsExecuted == false)
             {
                 this.position = this.position.Previous;
-                Debug.Assert(this.position.Value.IsExecuted, "Undid to a command which hasn't been executed.");
+                Debug.Assert((this.position != null) && this.position.Value.IsExecuted, "Undid to a command which hasn't been executed.");
             }
             state = this.position.Value;
             return true;

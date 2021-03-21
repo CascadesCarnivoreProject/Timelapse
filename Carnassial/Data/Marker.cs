@@ -34,7 +34,7 @@ namespace Carnassial.Data
         /// <summary>
         /// Gets or sets the marker's tooltip text
         /// </summary>
-        public string Tooltip { get; set; } // The label (not datalabel) associated with this marker. To be put in the tooltip and for highlighting.
+        public string? Tooltip { get; set; } // The label (not datalabel) associated with this marker. To be put in the tooltip and for highlighting.
 
         public Marker(string dataLabel, Point point)
         {
@@ -50,14 +50,14 @@ namespace Carnassial.Data
         // find a point's relative location so it's size invariant
         public static Point ConvertPointToRatio(Point point, double width, double height)
         {
-            Point ratio = new Point(point.X / width, point.Y / height);
+            Point ratio = new(point.X / width, point.Y / height);
             return ratio;
         }
 
         // convert a relative location to a specific screen location
         public static Point ConvertRatioToPoint(Point ratio, double width, double height)
         {
-            Point point = new Point(ratio.X * width, ratio.Y * height);
+            Point point = new(ratio.X * width, ratio.Y * height);
             return point;
         }
 

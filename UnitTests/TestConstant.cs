@@ -115,7 +115,7 @@ namespace Carnassial.UnitTests
             public static readonly FileExpectations DaylightMartenPair;
             public static readonly FileExpectations InfraredMarten;
 
-            public static readonly DateTime HybridVideoFileDate = new DateTime(2016, 06, 26);
+            public static readonly DateTime HybridVideoFileDate = new(2016, 06, 26);
 
             static FileExpectation()
             {

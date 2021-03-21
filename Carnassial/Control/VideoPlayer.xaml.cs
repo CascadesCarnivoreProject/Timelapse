@@ -92,7 +92,7 @@ namespace Carnassial.Control
             this.isProgrammaticUpdate = false;
         }
 
-        private void Timer_Tick(object sender, EventArgs e)
+        private void Timer_Tick(object? sender, EventArgs e)
         {
             if (this.Video.Source != null)
             {

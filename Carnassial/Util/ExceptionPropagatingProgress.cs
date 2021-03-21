@@ -10,7 +10,7 @@ namespace Carnassial.Util
         private readonly IProgress<TProgress> progress;
         private readonly ulong progressUpdateIntervalInMilliseconds;
 
-        public Exception Exception { get; private set; }
+        public Exception? Exception { get; private set; }
         public bool UpdatePending { get; private set; }
 
         public ExceptionPropagatingProgress(Action<TProgress> handler, TimeSpan progressUpdateInterval)

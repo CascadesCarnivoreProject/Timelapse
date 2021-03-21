@@ -8,7 +8,7 @@ namespace Carnassial.Dialog
 {
     public partial class RenameFileDatabaseFile : WindowWithSystemMenu
     {
-        public string NewFileName { get; private set; }
+        public string? NewFileName { get; private set; }
 
         public RenameFileDatabaseFile(string fileName, Window owner)
         {
@@ -17,6 +17,7 @@ namespace Carnassial.Dialog
 
             this.CurrentFileName.Text = fileName;
             this.Owner = owner;
+            this.NewFileName = null;
             this.NewFileNameWithoutExtension.Text = Path.GetFileNameWithoutExtension(fileName);
             this.NewFileNameWithoutExtension.CaretIndex = this.NewFileNameWithoutExtension.Text.Length;
             this.NewFileNameWithoutExtension.TextChanged += this.NewFileNameWithoutExtension_TextChanged;

@@ -15,7 +15,7 @@ namespace Carnassial.Data
         private bool disposed;
 
         public bool FileNoLongerAvailable { get; set; }
-        public MemoryImage Image { get; private set; }
+        public MemoryImage? Image { get; private set; }
         public bool ImageNotDecodable { get; set; }
 
         public CachedImage()

@@ -28,56 +28,54 @@ namespace Carnassial.Data.Spreadsheet
                     return;
                 }
 
-                using (XmlReader reader = XmlReader.Create(sharedStringStream))
+                using XmlReader reader = XmlReader.Create(sharedStringStream);
+                reader.MoveToContent();
+
+                int sharedStringCount = 0;
+                string sharedStringCountAsString = reader.GetAttribute(Constant.OpenXml.Attribute.CountAttribute);
+                if (sharedStringCountAsString != null)
                 {
-                    reader.MoveToContent();
+                    sharedStringCount = Int32.Parse(sharedStringCountAsString, NumberStyles.None, Constant.InvariantCulture);
+                }
 
-                    int sharedStringCount = 0;
-                    string sharedStringCountAsString = reader.GetAttribute(Constant.OpenXml.Attribute.CountAttribute);
-                    if (sharedStringCountAsString != null)
+                int uniqueSharedStringCount = 0;
+                string uniqueSharedStringCountAsString = reader.GetAttribute(Constant.OpenXml.Attribute.UniqueCountAttribute);
+                if (uniqueSharedStringCountAsString != null)
+                {
+                    uniqueSharedStringCount = Int32.Parse(uniqueSharedStringCountAsString, NumberStyles.None, Constant.InvariantCulture);
+                }
+
+                if (sharedStringCount != uniqueSharedStringCount)
+                {
+                    throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.SharedStringIndexDuplicateOrMissing));
+                }
+
+                status.BeginExcelLoad(sharedStringCount);
+
+                while (reader.EOF == false)
+                {
+                    if (reader.NodeType != XmlNodeType.Element)
                     {
-                        sharedStringCount = Int32.Parse(sharedStringCountAsString, NumberStyles.None, Constant.InvariantCulture);
+                        reader.Read();
                     }
-
-                    int uniqueSharedStringCount = 0;
-                    string uniqueSharedStringCountAsString = reader.GetAttribute(Constant.OpenXml.Attribute.UniqueCountAttribute);
-                    if (uniqueSharedStringCountAsString != null)
+                    else if (String.Equals(reader.LocalName, Constant.OpenXml.Element.SharedString, StringComparison.Ordinal))
                     {
-                        uniqueSharedStringCount = Int32.Parse(uniqueSharedStringCountAsString, NumberStyles.None, Constant.InvariantCulture);
+                        if (reader.ReadToDescendant(Constant.OpenXml.Element.SharedStringText, Constant.OpenXml.Namespace) == false)
+                        {
+                            throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SharedStringIndexNoSharedString));
+                        }
+                        string value = reader.ReadElementContentAsString();
+                        this.sharedStrings.Add(value, this.sharedStrings.Count);
+                        reader.ReadEndElement();
+
+                        if (status.ShouldUpdateProgress())
+                        {
+                            status.QueueProgressUpdate(this.sharedStrings.Count);
+                        }
                     }
-
-                    if (sharedStringCount != uniqueSharedStringCount)
+                    else
                     {
-                        throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.SharedStringIndexDuplicateOrMissing));
-                    }
-
-                    status.BeginExcelLoad(sharedStringCount);
-
-                    while (reader.EOF == false)
-                    {
-                        if (reader.NodeType != XmlNodeType.Element)
-                        {
-                            reader.Read();
-                        }
-                        else if (String.Equals(reader.LocalName, Constant.OpenXml.Element.SharedString, StringComparison.Ordinal))
-                        {
-                            if (reader.ReadToDescendant(Constant.OpenXml.Element.SharedStringText, Constant.OpenXml.Namespace) == false)
-                            {
-                                throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SharedStringIndexNoSharedString));
-                            }
-                            string value = reader.ReadElementContentAsString();
-                            this.sharedStrings.Add(value, this.sharedStrings.Count);
-                            reader.ReadEndElement();
-
-                            if (status.ShouldUpdateProgress())
-                            {
-                                status.QueueProgressUpdate(this.sharedStrings.Count);
-                            }
-                        }
-                        else
-                        {
-                            reader.Read();
-                        }
+                        reader.Read();
                     }
                 }
             }
@@ -109,7 +107,7 @@ namespace Carnassial.Data.Spreadsheet
         // of the two methods can be factored out to delegates.
         public static List<string> GetSharedStrings(SharedStringTablePart sharedStringPart, SpreadsheetReadWriteStatus status)
         {
-            List<string> sharedStrings = new List<string>();
+            List<string> sharedStrings = new();
             if (sharedStringPart == null)
             {
                 return sharedStrings;
@@ -117,41 +115,39 @@ namespace Carnassial.Data.Spreadsheet
 
             using (Stream sharedStringStream = sharedStringPart.GetStream(FileMode.Open, FileAccess.Read))
             {
-                using (XmlReader reader = XmlReader.Create(sharedStringStream))
+                using XmlReader reader = XmlReader.Create(sharedStringStream);
+                reader.MoveToContent();
+                string sharedStringCountAsString = reader.GetAttribute(Constant.OpenXml.Attribute.CountAttribute);
+                if (sharedStringCountAsString == null)
                 {
-                    reader.MoveToContent();
-                    string sharedStringCountAsString = reader.GetAttribute(Constant.OpenXml.Attribute.CountAttribute);
-                    if (sharedStringCountAsString == null)
+                    throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SpreadsheetReaderWriterNoStringTableCount));
+                }
+                int sharedStringCount = Int32.Parse(sharedStringCountAsString, NumberStyles.None, Constant.InvariantCulture);
+                status.BeginExcelLoad(sharedStringCount);
+
+                while (reader.EOF == false)
+                {
+                    if (reader.NodeType != XmlNodeType.Element)
                     {
-                        throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SpreadsheetReaderWriterNoStringTableCount));
+                        reader.Read();
                     }
-                    int sharedStringCount = Int32.Parse(sharedStringCountAsString, NumberStyles.None, Constant.InvariantCulture);
-                    status.BeginExcelLoad(sharedStringCount);
-
-                    while (reader.EOF == false)
+                    else if (String.Equals(reader.LocalName, Constant.OpenXml.Element.SharedString, StringComparison.Ordinal))
                     {
-                        if (reader.NodeType != XmlNodeType.Element)
+                        if (reader.ReadToDescendant(Constant.OpenXml.Element.SharedStringText, Constant.OpenXml.Namespace) == false)
                         {
-                            reader.Read();
+                            throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SharedStringIndexNoSharedString));
                         }
-                        else if (String.Equals(reader.LocalName, Constant.OpenXml.Element.SharedString, StringComparison.Ordinal))
-                        {
-                            if (reader.ReadToDescendant(Constant.OpenXml.Element.SharedStringText, Constant.OpenXml.Namespace) == false)
-                            {
-                                throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SharedStringIndexNoSharedString));
-                            }
-                            sharedStrings.Add(reader.ReadElementContentAsString());
-                            reader.ReadEndElement();
+                        sharedStrings.Add(reader.ReadElementContentAsString());
+                        reader.ReadEndElement();
 
-                            if (status.ShouldUpdateProgress())
-                            {
-                                status.QueueProgressUpdate(sharedStrings.Count);
-                            }
-                        }
-                        else
+                        if (status.ShouldUpdateProgress())
                         {
-                            reader.Read();
+                            status.QueueProgressUpdate(sharedStrings.Count);
                         }
+                    }
+                    else
+                    {
+                        reader.Read();
                     }
                 }
             }
@@ -166,14 +162,14 @@ namespace Carnassial.Data.Spreadsheet
                 sharedStrings[sharedString.Value] = sharedString.Key;
             }
 
-            SharedStringTable table = new SharedStringTable()
+            SharedStringTable table = new()
             {
                 Count = UInt32Value.FromUInt32((uint)this.sharedStrings.Count),
                 UniqueCount = UInt32Value.FromUInt32((uint)this.sharedStrings.Count)
             };
             foreach (string sharedString in sharedStrings)
             {
-                SharedStringItem sharedStringItem = new SharedStringItem()
+                SharedStringItem sharedStringItem = new()
                 {
                     Text = new Text()
                     {

@@ -9,7 +9,7 @@ namespace Carnassial.Data
     {
         public static SQLiteTableSchema CreateSchema()
         {
-            SQLiteTableSchema schema = new SQLiteTableSchema(Constant.DatabaseTable.ImageSet);
+            SQLiteTableSchema schema = new(Constant.DatabaseTable.ImageSet);
             schema.ColumnDefinitions.Add(ColumnDefinition.CreatePrimaryKey());
             schema.ColumnDefinitions.Add(new ColumnDefinition(Constant.ImageSetColumn.FileSelection, Constant.SQLiteAffinity.Integer)
             {
@@ -95,7 +95,7 @@ namespace Carnassial.Data
             while (reader.Read())
             {
                 // read file values
-                ImageSetRow imageSet = new ImageSetRow()
+                ImageSetRow imageSet = new()
                 {
                     FileSelection = (FileSelection)reader.GetInt32(fileSelectionIndex),
                     ID = reader.GetInt64(idIndex),

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,12 +18,12 @@ namespace Carnassial.Control
     {
         public const string ControlContainerStyleName = "ContainerGrid";
 
-        private HorizontalLineAdorner dragAdorner;
+        private HorizontalLineAdorner? dragAdorner;
 
         public List<DataEntryControl> Controls { get; private set; }
         public Dictionary<string, DataEntryControl> ControlsByDataLabel { get; private set; }
 
-        public event Action<DataEntryControl, DataEntryControl> ControlOrderChangedByDragDrop;
+        public event Action<DataEntryControl, DataEntryControl>? ControlOrderChangedByDragDrop;
 
         public DataEntryControls()
         {
@@ -51,7 +52,7 @@ namespace Carnassial.Control
         private void ControlsView_Drop(object sender, DragEventArgs dropEvent)
         {
             if ((this.ControlsView.SelectedItem != null) &&
-                this.TryFindDataEntryControl(dropEvent.GetPosition(this.ControlsView), out DataEntryControl dropTargetControl))
+                this.TryFindDataEntryControl(dropEvent.GetPosition(this.ControlsView), out DataEntryControl? dropTargetControl))
             {
                 if (this.dragAdorner != null)
                 {
@@ -100,7 +101,7 @@ namespace Carnassial.Control
                 FrameworkElement controlContainer = (FrameworkElement)this.ControlsView.SelectedItem;
                 if (controlContainer == null)
                 {
-                    if (this.TryFindDataEntryControl(e.GetPosition(this.ControlsView), out DataEntryControl control) == false)
+                    if (this.TryFindDataEntryControl(e.GetPosition(this.ControlsView), out DataEntryControl? control) == false)
                     {
                         return;
                     }
@@ -126,9 +127,9 @@ namespace Carnassial.Control
             // generated and then another image set loaded.  Any existing controls therefore need to be cleared.
             this.Clear();
 
-            DataEntryDateTimeOffset dateTimeControl = null;
+            DataEntryDateTimeOffset? dateTimeControl = null;
             bool showUtcOffset = false;
-            List<DataEntryControl> visibleControls = new List<DataEntryControl>();
+            List<DataEntryControl> visibleControls = new();
             foreach (ControlRow control in database.Controls)
             {
                 // no point in generating a control if it doesn't render in the UX
@@ -145,28 +146,28 @@ namespace Carnassial.Control
                 else if (control.ControlType == ControlType.Note)
                 {
                     // standard controls rendering as notes aren't editable by the user 
-                    List<string> autocompletions = null;
+                    List<string>? autocompletions = null;
                     bool readOnly = control.IsFilePathComponent();
                     if (readOnly == false)
                     {
                         autocompletions = new List<string>(getNoteAutocompletions.Invoke(control.DataLabel));
                     }
-                    DataEntryNote noteControl = new DataEntryNote(control, autocompletions, readOnly, this);
+                    DataEntryNote noteControl = new(control, autocompletions, readOnly, this);
                     visibleControls.Add(noteControl);
                 }
                 else if (control.ControlType == ControlType.Flag)
                 {
-                    DataEntryFlag flagControl = new DataEntryFlag(control, this);
+                    DataEntryFlag flagControl = new(control, this);
                     visibleControls.Add(flagControl);
                 }
                 else if (control.ControlType == ControlType.Counter)
                 {
-                    DataEntryCounter counterControl = new DataEntryCounter(control, this);
+                    DataEntryCounter counterControl = new(control, this);
                     visibleControls.Add(counterControl);
                 }
                 else if (control.ControlType == ControlType.FixedChoice)
                 {
-                    DataEntryChoice choiceControl = new DataEntryChoice(control, this);
+                    DataEntryChoice choiceControl = new(control, this);
                     visibleControls.Add(choiceControl);
                 }
                 else if (control.ControlType == ControlType.UtcOffset)
@@ -202,7 +203,7 @@ namespace Carnassial.Control
             }
         }
 
-        public void SetDataContext(ImageRow file)
+        public void SetDataContext(ImageRow? file)
         {
             foreach (DataEntryControl control in this.Controls)
             {
@@ -210,7 +211,7 @@ namespace Carnassial.Control
             }
         }
 
-        public bool TryFindDataEntryControl(Point mousePositionRelativeToControlsView, out DataEntryControl control)
+        public bool TryFindDataEntryControl(Point mousePositionRelativeToControlsView, [NotNullWhen(true)] out DataEntryControl? control)
         {
             control = null;
 

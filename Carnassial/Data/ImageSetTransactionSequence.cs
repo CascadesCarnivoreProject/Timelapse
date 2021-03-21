@@ -52,15 +52,15 @@ namespace Carnassial.Data
 
         public static ImageSetTransactionSequence CreateInsert(SQLiteDatabase database, SQLiteTransaction transaction)
         {
-            List<string> columns = new List<string>(Constant.ImageSetColumn.Columns.Count);
-            List<string> parameterNames = new List<string>(Constant.ImageSetColumn.Columns.Count);
+            List<string> columns = new(Constant.ImageSetColumn.Columns.Count);
+            List<string> parameterNames = new(Constant.ImageSetColumn.Columns.Count);
             foreach (string column in Constant.ImageSetColumn.Columns)
             {
                 columns.Add(column);
                 parameterNames.Add("@" + column);
             }
 
-            StringBuilder insertCommand = new StringBuilder("INSERT INTO " + Constant.DatabaseTable.ImageSet + " (" + String.Join(", ", columns) + ") VALUES (" + String.Join(", ", parameterNames) + ")");
+            StringBuilder insertCommand = new("INSERT INTO " + Constant.DatabaseTable.ImageSet + " (" + String.Join(", ", columns) + ") VALUES (" + String.Join(", ", parameterNames) + ")");
             return new ImageSetTransactionSequence(insertCommand, database, transaction);
         }
 
@@ -71,8 +71,8 @@ namespace Carnassial.Data
 
         public static ImageSetTransactionSequence CreateUpdate(SQLiteDatabase database, SQLiteTransaction transaction)
         {
-            StringBuilder updateCommand = new StringBuilder("UPDATE " + Constant.DatabaseTable.ImageSet + " SET ");
-            List<string> parameters = new List<string>(Constant.ImageSetColumn.Columns.Count);
+            StringBuilder updateCommand = new("UPDATE " + Constant.DatabaseTable.ImageSet + " SET ");
+            List<string> parameters = new(Constant.ImageSetColumn.Columns.Count);
             foreach (string column in Constant.ImageSetColumn.Columns)
             {
                 parameters.Add(column + "=@" + column);

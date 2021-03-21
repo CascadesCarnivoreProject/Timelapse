@@ -9,15 +9,15 @@ namespace Carnassial.Data
 {
     public class FileFindReplace
     {
-        private SearchTerm findTerm1;
-        private SearchTerm findTerm2;
-        private Func<object, string, object, bool> matchTerm1;
-        private Func<object, string, object, bool> matchTerm2;
+        private SearchTerm? findTerm1;
+        private SearchTerm? findTerm2;
+        private Func<object?, string, object, bool>? matchTerm1;
+        private Func<object?, string, object, bool>? matchTerm2;
         private readonly Dictionary<string, SqlDataType> sqlDataTypeByLabel;
 
         public List<string> FindTerm1Labels { get; private set; }
         public List<string> FindTerm2Labels { get; private set; }
-        public SearchTerm ReplaceTerm { get; set; }
+        public SearchTerm? ReplaceTerm { get; set; }
 
         public FileFindReplace(FileDatabase fileDatabase)
         {
@@ -25,10 +25,12 @@ namespace Carnassial.Data
             this.FindTerm1Labels = new List<string>(fileDatabase.Controls.RowCount);
             this.findTerm2 = null;
             this.FindTerm2Labels = new List<string>(fileDatabase.Controls.RowCount + 1) { Constant.UserInterface.NoFindValue };
+            this.matchTerm1 = null;
+            this.matchTerm2 = null;
             this.ReplaceTerm = null;
             this.sqlDataTypeByLabel = new Dictionary<string, SqlDataType>(fileDatabase.Controls.RowCount);
 
-            ControlRow defaultControl = null;
+            ControlRow? defaultControl = null;
             List<ControlRow> visibleControls = fileDatabase.Controls.Where(control => control.Visible).ToList();
             if (visibleControls.Count < 1)
             {
@@ -57,7 +59,7 @@ namespace Carnassial.Data
 
                 if (fileDatabase.Files.StandardColumnDataTypesByName.TryGetValue(control.DataLabel, out SqlDataType sqlDataType) == false)
                 {
-                    if (fileDatabase.Files.UserColumnsByName.TryGetValue(control.DataLabel, out FileTableColumn fileColumn))
+                    if (fileDatabase.Files.UserColumnsByName.TryGetValue(control.DataLabel, out FileTableColumn? fileColumn))
                     {
                         sqlDataType = fileColumn.DataType;
                     }
@@ -78,7 +80,7 @@ namespace Carnassial.Data
             this.FindTerm1 = findTerm1;
         }
 
-        public SearchTerm FindTerm1
+        public SearchTerm? FindTerm1
         {
             get
             {
@@ -86,13 +88,13 @@ namespace Carnassial.Data
             }
             set
             {
-                Debug.Assert(value.UseForSearching, "Search term is disabled.");
+                Debug.Assert(value != null ? value.UseForSearching : true, "Search term is disabled.");
                 this.findTerm1 = value;
                 this.matchTerm1 = this.GetMatch(value);
             }
         }
 
-        public SearchTerm FindTerm2
+        public SearchTerm? FindTerm2
         {
             get
             {
@@ -106,7 +108,7 @@ namespace Carnassial.Data
             }
         }
 
-        private Func<object, string, object, bool> GetMatch(SearchTerm searchTerm)
+        private Func<object?, string, object, bool>? GetMatch(SearchTerm? searchTerm)
         {
             if (searchTerm == null)
             {
@@ -114,23 +116,15 @@ namespace Carnassial.Data
             }
 
             SqlDataType dataType = this.sqlDataTypeByLabel[searchTerm.Label];
-            switch (dataType)
+            return dataType switch
             {
-                case SqlDataType.Boolean:
-                    return this.MatchBoolean;
-                case SqlDataType.DateTime:
-                    // ideally datetimes, integers, and reals would share a Match<T> but this is not feasible with C# 7 generics
-                    return this.MatchDateTime;
-                case SqlDataType.Integer:
-                    return this.MatchInt32;
-                case SqlDataType.Real:
-                    return this.MatchDouble;
-                case SqlDataType.String:
-                    return this.MatchString;
-                case SqlDataType.Blob:
-                default:
-                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled SQL data type {0}.", dataType));
-            }
+                SqlDataType.Boolean => this.MatchBoolean,
+                SqlDataType.DateTime => this.MatchDateTime, // ideally datetimes, integers, and reals would share a Match<T> but this is not feasible with C# 7 generics
+                SqlDataType.Integer => this.MatchInt32,
+                SqlDataType.Real => this.MatchDouble,
+                SqlDataType.String => this.MatchString,
+                _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled SQL data type {0}.", dataType)),
+            };
         }
 
         public bool Matches(ImageRow file)
@@ -140,12 +134,15 @@ namespace Carnassial.Data
                 return false;
             }
 
+            Debug.Assert(this.FindTerm1 != null);
             if (this.matchTerm1(file.GetDatabaseValue(this.FindTerm1.DataLabel), this.FindTerm1.Operator, this.FindTerm1.DatabaseValue))
             {
                 if (this.matchTerm2 == null)
                 {
                     return true;
                 }
+
+                Debug.Assert(this.FindTerm2 != null);
                 return this.matchTerm2(file.GetDatabaseValue(this.FindTerm2.DataLabel), this.FindTerm2.Operator, this.FindTerm2.DatabaseValue);
             }
 

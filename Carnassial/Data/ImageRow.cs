@@ -11,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -132,7 +131,7 @@ namespace Carnassial.Data
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public string RelativePath
         {
@@ -152,7 +151,7 @@ namespace Carnassial.Data
             }
         }
 
-        public object this[string propertyName]
+        public object? this[string propertyName]
         {
             get
             {
@@ -178,19 +177,14 @@ namespace Carnassial.Data
                         throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.ImageRowSetUtcOffsetThroughDateTimeOffset));
                     default:
                         FileTableColumn userColumn = this.table.UserColumnsByName[propertyName];
-                        switch (userColumn.DataType)
+                        return userColumn.DataType switch
                         {
-                            case SqlDataType.Boolean:
-                                return this.UserFlags[userColumn.DataIndex];
-                            case SqlDataType.Blob:
-                                return this.UserMarkerPositions[userColumn.DataIndex];
-                            case SqlDataType.Integer:
-                                return this.UserCounters[userColumn.DataIndex];
-                            case SqlDataType.String:
-                                return this.UserNotesAndChoices[userColumn.DataIndex];
-                            default:
-                                throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataIndex));
-                        }
+                            SqlDataType.Boolean => this.UserFlags[userColumn.DataIndex],
+                            SqlDataType.Blob => this.UserMarkerPositions[userColumn.DataIndex],
+                            SqlDataType.Integer => this.UserCounters[userColumn.DataIndex],
+                            SqlDataType.String => this.UserNotesAndChoices[userColumn.DataIndex],
+                            _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataIndex)),
+                        };
                 }
             }
             set
@@ -202,23 +196,23 @@ namespace Carnassial.Data
                     case Constant.FileColumn.DateTime:
                         throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.ImageRowSetDateTimeThroughDateTimeOffset));
                     case nameof(this.DateTimeOffset):
-                        this.DateTimeOffset = (DateTimeOffset)value;
+                        this.DateTimeOffset = (DateTimeOffset)(value ?? throw new ArgumentNullException(nameof(value), "Datetime offset cannot be null."));
                         break;
                     case Constant.FileColumn.DeleteFlag:
-                        this.DeleteFlag = (bool)value;
+                        this.DeleteFlag = (bool)(value ?? throw new ArgumentNullException(nameof(value), "Delete flag cannot be null."));
                         break;
                     case Constant.FileColumn.File:
                         throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.ImageRowSetFileNameThroughFileName));
                     case nameof(this.FileName):
-                        this.FileName = (string)value;
+                        this.FileName = (string)(value ?? throw new ArgumentNullException(nameof(value), "File name cannot be null."));
                         break;
                     case Constant.DatabaseColumn.ID:
                         throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.ImageRowIDImmutable));
                     case Constant.FileColumn.Classification:
-                        this.Classification = (FileClassification)value;
+                        this.Classification = (FileClassification)(value ?? throw new ArgumentNullException(nameof(value), "File classification cannot be null"));
                         break;
                     case Constant.FileColumn.RelativePath:
-                        this.RelativePath = (string)value;
+                        this.RelativePath = (string)(value ?? throw new ArgumentNullException(nameof(value), "Felative path cannot be null.")); 
                         break;
                     case Constant.FileColumn.UtcOffset:
                         throw new NotSupportedException(App.FindResource<string>(Constant.ResourceKey.ImageRowSetUtcOffsetThroughDateTimeOffset));
@@ -229,22 +223,22 @@ namespace Carnassial.Data
                         switch (userColumn.DataType)
                         {
                             case SqlDataType.Boolean:
-                                bool valueAsBool = (bool)value;
+                                bool valueAsBool = (bool)(value ?? throw new ArgumentNullException(nameof(value), String.Format("Boolean value for '{0}' cannot be null.", propertyName)));
                                 valueDifferent = this.UserFlags[userColumn.DataIndex] != valueAsBool;
                                 this.UserFlags[userColumn.DataIndex] = valueAsBool;
                                 break;
                             case SqlDataType.Blob:
-                                byte[] valueAsByteArray = (byte[])value;
-                                valueDifferent = this.ByteArraysEqual(this.UserMarkerPositions[userColumn.DataIndex], valueAsByteArray) == false;
+                                byte[] valueAsByteArray = (byte[])(value ?? throw new ArgumentNullException(nameof(value), String.Format("Blob value for '{0}' cannot be null.", propertyName))); ;
+                                valueDifferent = ImageRow.ByteArraysEqual(this.UserMarkerPositions[userColumn.DataIndex], valueAsByteArray) == false;
                                 this.UserMarkerPositions[userColumn.DataIndex] = valueAsByteArray;
                                 break;
                             case SqlDataType.Integer:
-                                int valueAsInt = (int)value;
+                                int valueAsInt = (int)(value ?? throw new ArgumentNullException(nameof(value), String.Format("Integer value for '{0}' cannot be null.", propertyName)));
                                 valueDifferent = this.UserCounters[userColumn.DataIndex] != valueAsInt;
                                 this.UserCounters[userColumn.DataIndex] = valueAsInt;
                                 break;
                             case SqlDataType.String:
-                                string valueAsString = (string)value;
+                                string valueAsString = (string)(value ?? throw new ArgumentNullException(nameof(value), String.Format("String value for '{0}' cannot be null.", propertyName)));
                                 valueDifferent = String.Equals(this.UserNotesAndChoices[userColumn.DataIndex], valueAsString, StringComparison.Ordinal) == false;
                                 this.UserNotesAndChoices[userColumn.DataIndex] = valueAsString;
                                 break;
@@ -271,7 +265,7 @@ namespace Carnassial.Data
             get { return this.dateTimeOffset.Offset; }
         }
 
-        private bool ByteArraysEqual(byte[] currentValue, byte[] newValue)
+        private static bool ByteArraysEqual(byte[] currentValue, byte[] newValue)
         {
             if (currentValue == null)
             {
@@ -284,7 +278,7 @@ namespace Carnassial.Data
             return currentValue.SequenceEqual(newValue);
         }
 
-        public object GetDatabaseValue(string dataLabel)
+        public object? GetDatabaseValue(string dataLabel)
         {
             switch (dataLabel)
             {
@@ -306,19 +300,14 @@ namespace Carnassial.Data
                     return DateTimeHandler.ToDatabaseUtcOffset(this.UtcOffset);
                 default:
                     FileTableColumn userColumn = this.table.UserColumnsByName[dataLabel];
-                    switch (userColumn.DataType)
+                    return userColumn.DataType switch
                     {
-                        case SqlDataType.Boolean:
-                            return this.UserFlags[userColumn.DataIndex];
-                        case SqlDataType.Blob:
-                            return this.UserMarkerPositions[userColumn.DataIndex];
-                        case SqlDataType.Integer:
-                            return this.UserCounters[userColumn.DataIndex];
-                        case SqlDataType.String:
-                            return this.UserNotesAndChoices[userColumn.DataIndex];
-                        default:
-                            throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataIndex));
-                    }
+                        SqlDataType.Boolean => this.UserFlags[userColumn.DataIndex],
+                        SqlDataType.Blob => this.UserMarkerPositions[userColumn.DataIndex],
+                        SqlDataType.Integer => this.UserCounters[userColumn.DataIndex],
+                        SqlDataType.String => this.UserNotesAndChoices[userColumn.DataIndex],
+                        _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataIndex)),
+                    };
             }
         }
 
@@ -356,9 +345,9 @@ namespace Carnassial.Data
             return propertyName;
         }
 
-        public static Dictionary<string, object> GetDefaultValues(FileDatabase fileDatabase)
+        public static Dictionary<string, object?> GetDefaultValues(FileDatabase fileDatabase)
         {
-            Dictionary<string, object> defaultValues = new Dictionary<string, object>(StringComparer.Ordinal);
+            Dictionary<string, object?> defaultValues = new(StringComparer.Ordinal);
             foreach (ControlRow control in fileDatabase.Controls)
             {
                 if (String.Equals(control.DataLabel, Constant.DatabaseColumn.ID, StringComparison.Ordinal) ||
@@ -440,7 +429,7 @@ namespace Carnassial.Data
             return DateTimeHandler.ToDisplayDateTimeString(this.DateTimeOffset);
         }
 
-        public string GetDisplayString(DataEntryControl control)
+        public string? GetDisplayString(DataEntryControl control)
         {
             switch (control.PropertyName)
             {
@@ -462,18 +451,13 @@ namespace Carnassial.Data
                     return DateTimeHandler.ToDisplayUtcOffsetString(this.UtcOffset);
                 default:
                     FileTableColumn userColumn = this.table.UserColumnsByName[control.DataLabel];
-                    switch (userColumn.DataType)
+                    return userColumn.DataType switch
                     {
-                        case SqlDataType.Boolean:
-                            return this.UserFlags[userColumn.DataIndex] ? Boolean.TrueString : Boolean.FalseString;
-                        case SqlDataType.Integer:
-                            return this.UserCounters[userColumn.DataIndex].ToString(Constant.InvariantCulture);
-                        case SqlDataType.String:
-                            return this.UserNotesAndChoices[userColumn.DataIndex];
-                        case SqlDataType.Blob:
-                        default:
-                            throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataType));
-                    }
+                        SqlDataType.Boolean => this.UserFlags[userColumn.DataIndex] ? Boolean.TrueString : Boolean.FalseString,
+                        SqlDataType.Integer => this.UserCounters[userColumn.DataIndex].ToString(Constant.InvariantCulture),
+                        SqlDataType.String => this.UserNotesAndChoices[userColumn.DataIndex],
+                        _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataType))
+                    };
             }
         }
 
@@ -493,7 +477,7 @@ namespace Carnassial.Data
             FileTableColumn counterColumn = this.table.UserColumnsByName[counterDataLabel];
             FileTableColumn markerColumn = this.table.UserColumnsByName[FileTable.GetMarkerPositionColumnName(counterDataLabel)];
 
-            MarkersForCounter markersForCounter = new MarkersForCounter(counterDataLabel, this.UserCounters[counterColumn.DataIndex]);
+            MarkersForCounter markersForCounter = new(counterDataLabel, this.UserCounters[counterColumn.DataIndex]);
             markersForCounter.MarkerPositionsFromFloatArray(this.UserMarkerPositions[markerColumn.DataIndex]);
             markersForCounter.PropertyChanged += this.MarkersForCounter_PropertyChanged;
             return markersForCounter;
@@ -523,7 +507,7 @@ namespace Carnassial.Data
             return Path.Combine(this.RelativePath, this.FileName);
         }
 
-        public string GetSpreadsheetString(string dataLabel)
+        public string? GetSpreadsheetString(string dataLabel)
         {
             switch (dataLabel)
             {
@@ -566,10 +550,10 @@ namespace Carnassial.Data
             }
         }
 
-        public Dictionary<string, object> GetValues()
+        public Dictionary<string, object?> GetValues()
         {
             // UtcDateTime and UtcOffset aren't included as they're portions of DateTimeOffset
-            Dictionary<string, object> valuesByDataLabel = new Dictionary<string, object>(StringComparer.Ordinal)
+            Dictionary<string, object?> valuesByDataLabel = new(StringComparer.Ordinal)
             {
                 { nameof(this.DateTimeOffset), this.DateTimeOffset },
                 { Constant.FileColumn.DeleteFlag, this.DeleteFlag },
@@ -581,24 +565,14 @@ namespace Carnassial.Data
             foreach (KeyValuePair<string, FileTableColumn> columnAndName in this.table.UserColumnsByName)
             {
                 FileTableColumn userColumn = columnAndName.Value;
-                object value;
-                switch (userColumn.DataType)
+                object value = userColumn.DataType switch
                 {
-                    case SqlDataType.Boolean:
-                        value = this.UserFlags[userColumn.DataIndex];
-                        break;
-                    case SqlDataType.Blob:
-                        value = this.UserMarkerPositions[userColumn.DataIndex];
-                        break;
-                    case SqlDataType.Integer:
-                        value = this.UserCounters[userColumn.DataIndex];
-                        break;
-                    case SqlDataType.String:
-                        value = this.UserNotesAndChoices[userColumn.DataIndex];
-                        break;
-                    default:
-                        throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataIndex));
-                }
+                    SqlDataType.Boolean => this.UserFlags[userColumn.DataIndex],
+                    SqlDataType.Blob => this.UserMarkerPositions[userColumn.DataIndex],
+                    SqlDataType.Integer => this.UserCounters[userColumn.DataIndex],
+                    SqlDataType.String => this.UserNotesAndChoices[userColumn.DataIndex],
+                    _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", userColumn.DataIndex)),
+                };
                 valuesByDataLabel[columnAndName.Key] = value;
             }
             return valuesByDataLabel;
@@ -642,8 +616,13 @@ namespace Carnassial.Data
             return String.Equals(previousJpegName, fileName, StringComparison.OrdinalIgnoreCase);
         }
 
-        private void MarkersForCounter_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void MarkersForCounter_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (sender == null)
+            {
+                throw new ArgumentNullException(nameof(sender), "Expected source of change notification to be specified.");
+            }
+
             MarkersForCounter markers = (MarkersForCounter)sender;
             this[markers.DataLabel] = markers.Count;
             this[FileTable.GetMarkerPositionColumnName(markers.DataLabel)] = markers.MarkerPositionsToFloatArray();
@@ -683,7 +662,7 @@ namespace Carnassial.Data
                     this.HasChanges |= true;
                     this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(fileTableMap.UserCounters[dataIndex].Control.DataLabel));
                 }
-                if (this.ByteArraysEqual(this.UserMarkerPositions[dataIndex], other.UserMarkerPositions[dataIndex]) == false)
+                if (ImageRow.ByteArraysEqual(this.UserMarkerPositions[dataIndex], other.UserMarkerPositions[dataIndex]) == false)
                 {
                     this.UserMarkerPositions[dataIndex] = other.UserMarkerPositions[dataIndex];
                     this.HasChanges |= true;
@@ -809,7 +788,7 @@ namespace Carnassial.Data
                 string positionsAsString = row[markerSpreadsheetIndex];
                 if (MarkersForCounter.TryParseExcelStringToPackedFloats(positionsAsString, out byte[] packedFloats))
                 {
-                    if (this.ByteArraysEqual(this.UserMarkerPositions[dataIndex], packedFloats) == false)
+                    if (ImageRow.ByteArraysEqual(this.UserMarkerPositions[dataIndex], packedFloats) == false)
                     {
                         this.HasChanges |= true;
                         this.UserMarkerPositions[dataIndex] = packedFloats;
@@ -889,23 +868,16 @@ namespace Carnassial.Data
 
         public static string ToString(FileClassification classification)
         {
-            switch (classification)
+            return classification switch
             {
-                case FileClassification.Color:
-                    return "Color";
-                case FileClassification.Corrupt:
-                    return "Corrupt";
-                case FileClassification.Dark:
-                    return "Dark";
-                case FileClassification.Greyscale:
-                    return "Greyscale";
-                case FileClassification.NoLongerAvailable:
-                    return "NoLongerAvailable";
-                case FileClassification.Video:
-                    return "Video";
-                default:
-                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled classification {0}.", classification));
-            }
+                FileClassification.Color => "Color",
+                FileClassification.Corrupt => "Corrupt",
+                FileClassification.Dark => "Dark",
+                FileClassification.Greyscale => "Greyscale",
+                FileClassification.NoLongerAvailable => "NoLongerAvailable",
+                FileClassification.Video => "Video",
+                _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled classification {0}.", classification)),
+            };
         }
 
         public async Task<CachedImage> TryLoadImageAsync(string imageSetFolderPath)
@@ -913,7 +885,7 @@ namespace Carnassial.Data
             return await this.TryLoadImageAsync(imageSetFolderPath, null).ConfigureAwait(true);
         }
 
-        public async virtual Task<CachedImage> TryLoadImageAsync(string imageSetFolderPath, Nullable<int> expectedDisplayWidth)
+        public async virtual Task<CachedImage> TryLoadImageAsync(string imageSetFolderPath, int? expectedDisplayWidth)
         {
             // 8MP average performance (n ~= 200), milliseconds
             // scale factor  1.0  1/2   1/4    1/8
@@ -929,23 +901,21 @@ namespace Carnassial.Data
                 };
             }
 
-            using (FileStream stream = new FileStream(jpeg.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan))
+            using FileStream stream = new(jpeg.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            if (stream.Length < Constant.Images.SmallestValidJpegSizeInBytes)
             {
-                if (stream.Length < Constant.Images.SmallestValidJpegSizeInBytes)
+                return new CachedImage()
                 {
-                    return new CachedImage()
-                    {
-                        ImageNotDecodable = true
-                    };
-                }
-
-                byte[] buffer = new byte[stream.Length];
-                await stream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(true);
-                MemoryImage image = new MemoryImage(buffer, expectedDisplayWidth);
-                // stopwatch.Stop();
-                // Trace.WriteLine(stopwatch.Elapsed.ToString("s\\.fffffff"));
-                return new CachedImage(image);
+                    ImageNotDecodable = true
+                };
             }
+
+            byte[] buffer = new byte[stream.Length];
+            await stream.ReadAsync(buffer.AsMemory(0, buffer.Length)).ConfigureAwait(true);
+            MemoryImage image = new(buffer, expectedDisplayWidth);
+            // stopwatch.Stop();
+            // Trace.WriteLine(stopwatch.Elapsed.ToString("s\\.fffffff"));
+            return new CachedImage(image);
         }
 
         public bool TryMoveFileToFolder(string imageSetFolderPath, string destinationFolderPath)
@@ -981,10 +951,10 @@ namespace Carnassial.Data
                 return false;
             }
 
-            string relativePath = NativeMethods.GetRelativePathFromDirectoryToDirectory(imageSetFolderPath, destinationFolderPath);
-            if (String.IsNullOrEmpty(relativePath) || String.Equals(relativePath, ".", StringComparison.Ordinal))
+            string? relativePath = NativeMethods.GetRelativePathFromDirectoryToDirectory(imageSetFolderPath, destinationFolderPath);
+            if (String.IsNullOrEmpty(relativePath))
             {
-                relativePath = null;
+                relativePath = ".";
             }
             this.RelativePath = relativePath;
             return true;
@@ -1028,26 +998,26 @@ namespace Carnassial.Data
 
         public MetadataReadResults TryReadDateTimeFromMetadata(IReadOnlyList<MetadataDirectory> metadataDirectories, TimeZoneInfo imageSetTimeZone)
         {
-            ExifSubIfdDirectory exifSubIfd = metadataDirectories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+            ExifSubIfdDirectory? exifSubIfd = metadataDirectories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
             if (exifSubIfd == null)
             {
                 // no EXIF information and no other plausible source of metadata
                 return MetadataReadResults.None;
             }
 
-            object dateTimeOriginalAsObject = exifSubIfd.GetObject(ExifSubIfdDirectory.TagDateTimeOriginal);
+            object? dateTimeOriginalAsObject = exifSubIfd.GetObject(ExifSubIfdDirectory.TagDateTimeOriginal);
             if (dateTimeOriginalAsObject == null)
             {
                 // camera doesn't provide an EXIF standard DateTimeOriginal
                 // check for a Reconyx makernote
-                ReconyxHyperFireMakernoteDirectory hyperfireMakernote = metadataDirectories.OfType<ReconyxHyperFireMakernoteDirectory>().FirstOrDefault();
+                ReconyxHyperFireMakernoteDirectory? hyperfireMakernote = metadataDirectories.OfType<ReconyxHyperFireMakernoteDirectory>().FirstOrDefault();
                 if (hyperfireMakernote != null)
                 {
                     dateTimeOriginalAsObject = hyperfireMakernote.GetObject(ReconyxHyperFireMakernoteDirectory.TagDateTimeOriginal);
                 }
                 else
                 {
-                    ReconyxUltraFireMakernoteDirectory ultrafireMakernote = metadataDirectories.OfType<ReconyxUltraFireMakernoteDirectory>().FirstOrDefault();
+                    ReconyxUltraFireMakernoteDirectory? ultrafireMakernote = metadataDirectories.OfType<ReconyxUltraFireMakernoteDirectory>().FirstOrDefault();
                     if (ultrafireMakernote != null)
                     {
                         dateTimeOriginalAsObject = ultrafireMakernote.GetObject(ReconyxUltraFireMakernoteDirectory.TagDateTimeOriginal);

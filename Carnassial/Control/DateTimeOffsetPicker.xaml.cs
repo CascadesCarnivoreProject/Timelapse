@@ -33,6 +33,8 @@ namespace Carnassial.Control
         private readonly List<IndexedDateTimePart> parts;
         private readonly TextBoxUpDownAdorner upDownButtons;
 
+        public event Action<DateTimeOffsetPicker, DateTimeOffset>? ValueChanged;
+
         public DateTimeOffsetPicker()
         {
             this.currentPartIndex = -1;
@@ -86,12 +88,12 @@ namespace Carnassial.Control
             set { this.SetValue(DateTimeOffsetPicker.ValueProperty, value); }
         }
 
-        public event Action<DateTimeOffsetPicker, DateTimeOffset> ValueChanged;
-
-        private void Calendar_SelectedDatesChanged(object sender, SelectionChangedEventArgs e)
+        private void Calendar_SelectedDatesChanged(object? sender, SelectionChangedEventArgs e)
         {
             this.CalendarButton.IsChecked = false;
-            this.Value = new DateTimeOffset(this.Calendar.SelectedDate.Value.Date + this.Value.TimeOfDay, this.Value.Offset);
+            DateTime? selectedDate = this.Calendar.SelectedDate;
+            Debug.Assert(selectedDate != null);
+            this.Value = new DateTimeOffset((DateTime)selectedDate + this.Value.TimeOfDay, this.Value.Offset);
         }
 
         private static object CoerceMaximum(DependencyObject d, object value)
@@ -411,7 +413,7 @@ namespace Carnassial.Control
                         currentPart.SelectionLength = 2;
 
                         // add minutes part
-                        IndexedDateTimePart minutesPart = new IndexedDateTimePart(formatCharacter, formatIndex, currentPart.SelectionStart + currentPart.SelectionLength + 1)
+                        IndexedDateTimePart minutesPart = new(formatCharacter, formatIndex, currentPart.SelectionStart + currentPart.SelectionLength + 1)
                         {
                             SelectionLength = 2
                         };

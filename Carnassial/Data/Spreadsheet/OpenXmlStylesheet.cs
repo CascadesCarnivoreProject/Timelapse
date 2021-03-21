@@ -77,7 +77,7 @@ namespace Carnassial.Data.Spreadsheet
 
         private CellFormats CreateDefaultCellFormats()
         {
-            CellFormats cellFormats = new CellFormats()
+            CellFormats cellFormats = new()
             {
                 Count = UInt32Value.FromUInt32(2)
             };
@@ -102,7 +102,7 @@ namespace Carnassial.Data.Spreadsheet
 
         private Fonts CreateDefaultFonts()
         {
-            Fonts fonts = new Fonts()
+            Fonts fonts = new()
             {
                 Count = UInt32Value.FromUInt32(2)
             };
@@ -134,7 +134,7 @@ namespace Carnassial.Data.Spreadsheet
 
         private Stylesheet CreateDefaultStylesheet()
         {
-            Stylesheet stylesheet = new Stylesheet()
+            Stylesheet stylesheet = new()
             {
                 Borders = new Borders()
                 {

@@ -29,7 +29,7 @@ namespace Carnassial.Control
         private int currentPartIndex;
         private readonly TextBoxUpDownAdorner upDownButtons;
 
-        public event Action<TimeSpanPicker, TimeSpan> ValueChanged;
+        public event Action<TimeSpanPicker, TimeSpan>? ValueChanged;
 
         public TimeSpanPicker()
         {
@@ -116,22 +116,16 @@ namespace Carnassial.Control
 
         protected virtual TimeSpan ConvertIncrementOrDecrementToTimeSpan(char partFormat, int incrementOrDecrement)
         {
-            switch (partFormat)
+            return partFormat switch
             {
-                case 'd':
-                    return TimeSpan.FromDays(incrementOrDecrement);
-                case 'f':
-                case 'F':
-                    return TimeSpan.FromMilliseconds(incrementOrDecrement);
-                case 'h':
-                    return TimeSpan.FromHours(incrementOrDecrement);
-                case 'm':
-                    return TimeSpan.FromMinutes(incrementOrDecrement);
-                case 's':
-                    return TimeSpan.FromSeconds(incrementOrDecrement);
-                default:
-                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled part format {0}.", partFormat));
-            }
+                'd' => TimeSpan.FromDays(incrementOrDecrement),
+                'f' or 
+                'F' => TimeSpan.FromMilliseconds(incrementOrDecrement),
+                'h' => TimeSpan.FromHours(incrementOrDecrement),
+                'm' => TimeSpan.FromMinutes(incrementOrDecrement),
+                's' => TimeSpan.FromSeconds(incrementOrDecrement),
+                _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled part format {0}.", partFormat)),
+            };
         }
 
         private void IncrementOrDecrement(int incrementOrDecrement)

@@ -11,16 +11,16 @@ namespace Carnassial.Control
 {
     public partial class AnalysisButtons : UserControl
     {
+        public event Action<object, MouseEventArgs>? MouseEnterButton;
+        public event Action<object, MouseEventArgs>? MouseLeaveButton;
+        public event Action<object, int>? PasteAnalysis;
+        public event Action<object, RoutedEventArgs>? PasteNext;
+        public event Action<object, RoutedEventArgs>? PastePrevious;
+
         public AnalysisButtons()
         {
             this.InitializeComponent();
         }
-
-        public event Action<object, MouseEventArgs> MouseEnterButton;
-        public event Action<object, MouseEventArgs> MouseLeaveButton;
-        public event Action<object, int> PasteAnalysis;
-        public event Action<object, RoutedEventArgs> PasteNext;
-        public event Action<object, RoutedEventArgs> PastePrevious;
 
         private void Button_MouseEnter(object sender, MouseEventArgs e)
         {
@@ -32,7 +32,7 @@ namespace Carnassial.Control
             this.MouseLeaveButton?.Invoke(this, e);
         }
 
-        public void EnableOrDisable(bool filesSelected, List<Dictionary<string, object>> analyses)
+        public void EnableOrDisable(bool filesSelected, List<Dictionary<string, object?>?> analyses)
         {
             this.PasteAnalysis1.IsEnabled = filesSelected && (analyses[0] != null);
             this.PasteAnalysis2.IsEnabled = filesSelected && (analyses[1] != null);
@@ -102,7 +102,7 @@ namespace Carnassial.Control
             this.PastePrevious?.Invoke(this, e);
         }
 
-        public void SetAnalysis(int analysisSlot, Dictionary<string, object> analysisValuesByDataLabel, HashSet<string> analysisLabelsByDataLabel)
+        public void SetAnalysis(int analysisSlot, Dictionary<string, object?> analysisValuesByDataLabel, HashSet<string> analysisLabelsByDataLabel)
         {
             if ((analysisSlot < 0) || (analysisSlot > 8))
             {
@@ -110,51 +110,30 @@ namespace Carnassial.Control
             }
             Debug.Assert(analysisLabelsByDataLabel != null, nameof(analysisLabelsByDataLabel) + " unexpectedly null.");
             Debug.Assert(analysisValuesByDataLabel != null, nameof(analysisValuesByDataLabel) + " unexpectedly null.");
-
-            Button pasteAnalysisButton;
-            switch (analysisSlot)
+ 
+            Button pasteAnalysisButton = analysisSlot switch
             {
-                case 0:
-                    pasteAnalysisButton = this.PasteAnalysis1;
-                    break;
-                case 1:
-                    pasteAnalysisButton = this.PasteAnalysis2;
-                    break;
-                case 2:
-                    pasteAnalysisButton = this.PasteAnalysis3;
-                    break;
-                case 3:
-                    pasteAnalysisButton = this.PasteAnalysis4;
-                    break;
-                case 4:
-                    pasteAnalysisButton = this.PasteAnalysis5;
-                    break;
-                case 5:
-                    pasteAnalysisButton = this.PasteAnalysis6;
-                    break;
-                case 6:
-                    pasteAnalysisButton = this.PasteAnalysis7;
-                    break;
-                case 7:
-                    pasteAnalysisButton = this.PasteAnalysis8;
-                    break;
-                case 8:
-                    pasteAnalysisButton = this.PasteAnalysis9;
-                    break;
-                default:
-                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled analysis slot {0}.", analysisSlot));
-            }
-
+                0 => this.PasteAnalysis1,
+                1 => this.PasteAnalysis2,
+                2 => this.PasteAnalysis3,
+                3 => this.PasteAnalysis4,
+                4 => this.PasteAnalysis5,
+                5 => this.PasteAnalysis6,
+                6 => this.PasteAnalysis7,
+                7 => this.PasteAnalysis8,
+                8 => this.PasteAnalysis9,
+                _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled analysis slot {0}.", analysisSlot)),
+            };
             int analysisNumber = analysisSlot + 1;
-            StringBuilder buttonLabel = new StringBuilder("_" + analysisNumber + ": ");
-            StringBuilder buttonTooltip = new StringBuilder("Analysis " + analysisNumber + ": ");
+            StringBuilder buttonLabel = new("_" + analysisNumber + ": ");
+            StringBuilder buttonTooltip = new("Analysis " + analysisNumber + ": ");
             bool analysisSpecificValues = false;
             bool copyableValueEncountered = false;
-            foreach (KeyValuePair<string, object> analysisValue in analysisValuesByDataLabel)
+            foreach (KeyValuePair<string, object?> analysisValue in analysisValuesByDataLabel)
             {
                 if (analysisValue.Value != null)
                 {
-                    string valueAsString = analysisValue.Value.ToString();
+                    string? valueAsString = analysisValue.Value.ToString();
                     if (String.IsNullOrWhiteSpace(valueAsString) == false)
                     {
                         if (analysisLabelsByDataLabel.Contains(analysisValue.Key))

@@ -10,10 +10,10 @@ namespace Carnassial.Dialog
 {
     public partial class About : WindowWithSystemMenu
     {
-        private readonly Uri latestReleaseAddress;
-        private readonly Uri releasesAddress;
+        private readonly Uri? latestReleaseAddress;
+        private readonly Uri? releasesAddress;
 
-        public Nullable<DateTime> MostRecentCheckForUpdate { get; private set; }
+        public DateTime? MostRecentCheckForUpdate { get; private set; }
 
         public About(Window owner)
         {
@@ -21,12 +21,16 @@ namespace Carnassial.Dialog
             this.Message.SetVisibility();
 
             this.latestReleaseAddress = CarnassialConfigurationSettings.GetLatestReleaseApiAddress();
-            this.MostRecentCheckForUpdate = null;
-            this.Owner = owner;
             this.releasesAddress = CarnassialConfigurationSettings.GetReleasesBrowserAddress();
-            this.Version.Text = typeof(About).Assembly.GetName().Version.ToString();
 
             this.CheckForNewerRelease.IsEnabled = this.latestReleaseAddress != null;
+            this.MostRecentCheckForUpdate = null;
+            this.Owner = owner;
+
+            Version? assemblyVersion = typeof(About).Assembly.GetName().Version;
+            Debug.Assert(assemblyVersion != null);
+            this.Version.Text = assemblyVersion.ToString();
+            
             this.ViewReleases.IsEnabled = this.releasesAddress != null;
 
             // configure hyperlinks
@@ -63,7 +67,7 @@ namespace Carnassial.Dialog
 
         private void CheckForUpdate_Click(object sender, RoutedEventArgs e)
         {
-            GithubReleaseClient updater = new GithubReleaseClient(Constant.ApplicationName, this.latestReleaseAddress);
+            GithubReleaseClient updater = new(Constant.ApplicationName, this.latestReleaseAddress);
             if (updater.TryGetAndParseRelease(true, out Version _))
             {
                 this.MostRecentCheckForUpdate = DateTime.UtcNow;
@@ -86,6 +90,7 @@ namespace Carnassial.Dialog
 
         private void VersionChanges_Click(object sender, RoutedEventArgs e)
         {
+            Debug.Assert(this.releasesAddress != null);
             Process.Start(this.releasesAddress.AbsoluteUri);
             e.Handled = true;
         }

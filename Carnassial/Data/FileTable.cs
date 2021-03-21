@@ -4,6 +4,7 @@ using Carnassial.Util;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace Carnassial.Data
@@ -32,7 +33,7 @@ namespace Carnassial.Data
 
         public static SQLiteTableSchema CreateSchema(ControlTable controls)
         {
-            SQLiteTableSchema schema = new SQLiteTableSchema(Constant.DatabaseTable.Files);
+            SQLiteTableSchema schema = new(Constant.DatabaseTable.Files);
             schema.ColumnDefinitions.Add(ColumnDefinition.CreatePrimaryKey());
 
             // derive schema from the controls defined
@@ -103,7 +104,7 @@ namespace Carnassial.Data
                 yield break;
             }
 
-            ColumnDefinition column = new ColumnDefinition(control.DataLabel, Constant.SQLiteAffinity.Text);
+            ColumnDefinition column = new(control.DataLabel, Constant.SQLiteAffinity.Text);
             switch (control.ControlType)
             {
                 case ControlType.Counter:
@@ -135,10 +136,10 @@ namespace Carnassial.Data
 
         public Dictionary<string, Dictionary<string, ImageRow>> GetFilesByRelativePathAndName()
         {
-            Dictionary<string, Dictionary<string, ImageRow>> filesByRelativePathAndName = new Dictionary<string, Dictionary<string, ImageRow>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, Dictionary<string, ImageRow>> filesByRelativePathAndName = new(StringComparer.OrdinalIgnoreCase);
             foreach (ImageRow file in this.Rows)
             {
-                if (filesByRelativePathAndName.TryGetValue(file.RelativePath, out Dictionary<string, ImageRow> filesInFolderByName) == false)
+                if (filesByRelativePathAndName.TryGetValue(file.RelativePath, out Dictionary<string, ImageRow>? filesInFolderByName) == false)
                 {
                     filesInFolderByName = new Dictionary<string, ImageRow>(StringComparer.OrdinalIgnoreCase);
                     filesByRelativePathAndName.Add(file.RelativePath, filesInFolderByName);
@@ -150,10 +151,10 @@ namespace Carnassial.Data
 
         public SortedDictionary<string, List<string>> GetFileNamesByRelativePath()
         {
-            SortedDictionary<string, List<string>> filesByRelativePath = new SortedDictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            SortedDictionary<string, List<string>> filesByRelativePath = new(StringComparer.OrdinalIgnoreCase);
             foreach (ImageRow file in this.Rows)
             {
-                if (filesByRelativePath.TryGetValue(file.RelativePath, out List<string> filesInFolder) == false)
+                if (filesByRelativePath.TryGetValue(file.RelativePath, out List<string>? filesInFolder) == false)
                 {
                     filesInFolder = new List<string>();
                     filesByRelativePath.Add(file.RelativePath, filesInFolder);
@@ -172,10 +173,10 @@ namespace Carnassial.Data
         {
             // for now, the primary purpose of this function is allow the caller to quickly check if a file is in the database
             // Therefore, assemble a Dictionary<, HashSet<>> as both these collection types have O(1) Contains().
-            Dictionary<string, HashSet<string>> filesByRelativePath = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, HashSet<string>> filesByRelativePath = new(StringComparer.OrdinalIgnoreCase);
             foreach (ImageRow file in this.Rows)
             {
-                if (filesByRelativePath.TryGetValue(file.RelativePath, out HashSet<string> filesInFolder) == false)
+                if (filesByRelativePath.TryGetValue(file.RelativePath, out HashSet<string>? filesInFolder) == false)
                 {
                     filesInFolder = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     filesByRelativePath.Add(file.RelativePath, filesInFolder);
@@ -315,7 +316,7 @@ namespace Carnassial.Data
                             byte[] value;
                             if (reader.IsDBNull(sqlIndex))
                             {
-                                value = null;
+                                value = Array.Empty<byte>();
                             }
                             else
                             {
@@ -326,7 +327,7 @@ namespace Carnassial.Data
                                 }
                                 else
                                 {
-                                    value = null;
+                                    value = Array.Empty<byte>();
                                 }
                             }
                             file.UserMarkerPositions[userColumn.DataIndex] = value;
@@ -363,7 +364,7 @@ namespace Carnassial.Data
                     {
                         case ControlType.Counter:
                             string markerColumnName = FileTable.GetMarkerPositionColumnName(control.DataLabel);
-                            FileTableColumn markerColumn = new FileTableColumn(markerColumnName, control);
+                            FileTableColumn markerColumn = new(markerColumnName, control);
                             this.UserColumnsByName.Add(markerColumnName, markerColumn);
                             ++this.UserCounters;
                             break;
@@ -383,7 +384,7 @@ namespace Carnassial.Data
             }
         }
 
-        public bool TryGetPreviousFile(int fileIndex, out ImageRow previousFile)
+        public bool TryGetPreviousFile(int fileIndex, [NotNullWhen(true)] out ImageRow? previousFile)
         {
             if (fileIndex > 1)
             {
@@ -395,7 +396,7 @@ namespace Carnassial.Data
             return false;
         }
 
-        public bool TryFind(long id, out ImageRow file, out int fileIndex)
+        public bool TryFind(long id, [NotNullWhen(true)] out ImageRow? file, out int fileIndex)
         {
             for (fileIndex = 0; fileIndex < this.Rows.Count; ++fileIndex)
             {

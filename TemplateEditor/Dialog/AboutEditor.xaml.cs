@@ -13,7 +13,7 @@ namespace Carnassial.Editor.Dialog
         private readonly Uri latestReleaseAddress;
         private readonly Uri releasesAddress;
 
-        public Nullable<DateTime> MostRecentCheckForUpdate { get; private set; }
+        public DateTime? MostRecentCheckForUpdate { get; private set; }
 
         public AboutEditor(Window owner)
         {
@@ -54,7 +54,7 @@ namespace Carnassial.Editor.Dialog
 
         private void CheckForUpdate_Click(object sender, RoutedEventArgs e)
         {
-            GithubReleaseClient updater = new GithubReleaseClient(Constant.ApplicationName, this.latestReleaseAddress);
+            GithubReleaseClient updater = new(Constant.ApplicationName, this.latestReleaseAddress);
             if (updater.TryGetAndParseRelease(true, out Version _))
             {
                 this.MostRecentCheckForUpdate = DateTime.UtcNow;

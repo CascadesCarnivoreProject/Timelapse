@@ -14,9 +14,9 @@ namespace Carnassial.Control
         private const int DatabaseValueColumn = 3;
 
         private readonly AutocompletionCache autocompletionCache;
-        private WpfControl databaseValueControl;
+        private WpfControl? databaseValueControl;
         private readonly SearchTermList parentSearchTermList;
-        private readonly SearchTermPicker previousSearchTermPicker;
+        private readonly SearchTermPicker? previousSearchTermPicker;
         private readonly int termIndex;
 
         public SearchTerm SearchTerm { get; private set; }
@@ -79,7 +79,7 @@ namespace Carnassial.Control
 
             // update database value control
             this.databaseValueControl = this.SearchTerm.CreateValueControl(this.autocompletionCache);
-            this.databaseValueControl.IsEnabled = this.UseCheckBox.IsChecked.Value;
+            this.databaseValueControl.IsEnabled = this.UseCheckBox.IsChecked ?? false;
             this.Grid.ReplaceOrAddChild(0, SearchTermPicker.DatabaseValueColumn, this.databaseValueControl);
 
             // update shortcut key
@@ -108,7 +108,7 @@ namespace Carnassial.Control
             if (this.SearchTerm.UseForSearching)
             {
                 string query = this.SearchTerm.ToString();
-                Nullable<LogicalOperator> termCombiningOperator = this.parentSearchTermList.GetCombiningOperatorForTerm(this.termIndex);
+                LogicalOperator? termCombiningOperator = this.parentSearchTermList.GetCombiningOperatorForTerm(this.termIndex);
                 if (termCombiningOperator.HasValue)
                 {
                     query += " " + termCombiningOperator.ToString();
@@ -135,7 +135,7 @@ namespace Carnassial.Control
 
         private void UseCheckBox_CheckedOrUnchecked(object sender, RoutedEventArgs e)
         {
-            bool isEnabled = this.UseCheckBox.IsChecked.Value;
+            bool isEnabled = this.UseCheckBox.IsChecked ?? false;
             this.OperatorBox.IsEnabled = isEnabled;
             if (this.databaseValueControl != null)
             {

@@ -1,17 +1,20 @@
 ﻿using Carnassial.Database;
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 
 namespace Carnassial.Data
 {
     public class ImageSetRow : SQLiteRow, INotifyPropertyChanged
     {
         private FileSelection fileSelection;
-        private string initialFolderName;
+        private string? initialFolderName;
         private long mostRecentFileID;
-        private string log;
+        private string? log;
         private ImageSetOptions options;
-        private string timeZone;
+        private string? timeZone;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public ImageSetRow()
         {
@@ -41,7 +44,7 @@ namespace Carnassial.Data
             }
         }
 
-        public string InitialFolderName
+        public string? InitialFolderName
         {
             get
             {
@@ -77,9 +80,7 @@ namespace Carnassial.Data
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        public string Log
+        public string? Log
         {
             get
             {
@@ -115,7 +116,7 @@ namespace Carnassial.Data
             }
         }
 
-        public string TimeZone
+        public string? TimeZone
         {
             get
             {
@@ -135,6 +136,7 @@ namespace Carnassial.Data
 
         public TimeZoneInfo GetTimeZoneInfo()
         {
+            Debug.Assert(this.TimeZone != null);
             return TimeZoneInfo.FindSystemTimeZoneById(this.TimeZone);
         }
     }

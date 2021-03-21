@@ -7,7 +7,7 @@ namespace Carnassial.Database
     public class ColumnDefinition
     {
         public bool Autoincrement { get; set; }
-        public string DefaultValue { get; set; }
+        public string? DefaultValue { get; set; }
         public bool PrimaryKey { get; set; }
         public string Name { get; set; }
         public bool NotNull { get; set; }
@@ -77,7 +77,7 @@ namespace Carnassial.Database
 
         public override string ToString()
         {
-            StringBuilder columnDefinition = new StringBuilder(SQLiteDatabase.QuoteIdentifier(this.Name) + " " + this.Type);
+            StringBuilder columnDefinition = new(SQLiteDatabase.QuoteIdentifier(this.Name) + " " + this.Type);
             if (this.DefaultValue != null)
             {
                 if (String.Equals(this.Type, Constant.SQLiteAffinity.Text, StringComparison.OrdinalIgnoreCase) ||

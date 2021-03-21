@@ -1,7 +1,7 @@
 ﻿using Carnassial.Data;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -32,7 +32,7 @@ namespace Carnassial.Control
             get { return this.Container.ContextMenu; }
         }
 
-        public abstract ImageRow DataContext { get; set; }
+        public abstract ImageRow? DataContext { get; set; }
 
         /// <summary>Gets or sets the data label which corresponds to this control.</summary>
         public string DataLabel { get; protected set; }
@@ -118,9 +118,9 @@ namespace Carnassial.Control
 
         public abstract void HighlightIfCopyable();
 
-        public virtual bool IsCopyableValue(object value)
+        public virtual bool IsCopyableValue(object? value)
         {
-            string valueAsString = (string)value;
+            string? valueAsString = (string?)value;
             if (String.IsNullOrEmpty(valueAsString))
             {
                 return false;
@@ -150,7 +150,7 @@ namespace Carnassial.Control
 
         public TContent ContentControl { get; private set; }
 
-        public override ImageRow DataContext
+        public override ImageRow? DataContext
         {
             get { return (ImageRow)this.ContentControl.DataContext; }
             set { this.ContentControl.DataContext = value; }
@@ -196,7 +196,7 @@ namespace Carnassial.Control
             {
                 for (int labelIndex = 0; labelIndex < control.Label.Length; ++labelIndex)
                 {
-                    if (Constant.Control.ReservedHotKeys.IndexOf(control.Label[labelIndex]) == -1)
+                    if (!Constant.Control.ReservedHotKeys.Contains(control.Label[labelIndex]))
                     {
                         hotkeyIndex = labelIndex;
                         break;
@@ -214,17 +214,17 @@ namespace Carnassial.Control
             else
             {
                 // control can be assigned a hotkey
-                this.LabelControl.Content = control.Label.Substring(0, hotkeyIndex) + "_" + control.Label.Substring(hotkeyIndex, control.Label.Length - hotkeyIndex);
+                Debug.Assert(control.Label != null);
+                this.LabelControl.Content = control.Label.Substring(0, hotkeyIndex) + "_" + control.Label[hotkeyIndex..];
             }
             this.LabelControl.Style = (Style)styleProvider.FindResource(labelStyleName.ToString());
             this.LabelTooltip = control.Tooltip;
 
-            if (typeof(TLabel) == typeof(Label))
+            if (this.LabelControl is Label labelControlAsLabel)
             {
                 // if the label control is a Label there's no action which can be taken with it
                 // In this case, set the hotkey to the first letter in the control's name and bind the label's target to the content control so that the 
                 // hotkey moves focus to the content control rather than the label.
-                Label labelControlAsLabel = this.LabelControl as Label;
                 labelControlAsLabel.Target = this.ContentControl;
             }
 

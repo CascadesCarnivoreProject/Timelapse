@@ -11,7 +11,7 @@ namespace Carnassial.Dialog
         private readonly T[] array;
         private int previousCreateIndex;
 
-        public event NotifyCollectionChangedEventHandler CollectionChanged;
+        public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
         public ObservableArray(int length, T defaultValue)
         {
@@ -24,10 +24,17 @@ namespace Carnassial.Dialog
             }
         }
 
-        object IList.this[int index]
+        object? IList.this[int index]
         {
             get { return this.array[index]; }
-            set { this.array[index] = (T)value; }
+            set 
+            {
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value));
+                }
+                this.array[index] = (T)value; 
+            }
         }
 
         public T this[int index]
@@ -71,7 +78,7 @@ namespace Carnassial.Dialog
             ((IList<T>)this.array).Add(item);
         }
 
-        int IList.Add(object value)
+        int IList.Add(object? value)
         {
             throw new NotSupportedException();
         }
@@ -86,8 +93,12 @@ namespace Carnassial.Dialog
             ((IList<T>)this.array).Clear();
         }
 
-        bool IList.Contains(object value)
+        bool IList.Contains(object? value)
         {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
             return ((IList<T>)this.array).Contains((T)value);
         }
 
@@ -116,8 +127,12 @@ namespace Carnassial.Dialog
             return ((IList<T>)this.array).GetEnumerator();
         }
 
-        int IList.IndexOf(object value)
+        int IList.IndexOf(object? value)
         {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
             return ((IList<T>)this.array).IndexOf((T)value);
         }
 
@@ -126,8 +141,12 @@ namespace Carnassial.Dialog
             return ((IList<T>)this.array).IndexOf(item);
         }
 
-        void IList.Insert(int index, object value)
+        void IList.Insert(int index, object? value)
         {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
             ((IList<T>)this.array).Insert(index, (T)value);
         }
 
@@ -141,8 +160,12 @@ namespace Carnassial.Dialog
             return ((IList<T>)this.array).Remove(item);
         }
 
-        void IList.Remove(object value)
+        void IList.Remove(object? value)
         {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
             ((IList<T>)this.array).Remove((T)value);
         }
 
@@ -168,8 +191,8 @@ namespace Carnassial.Dialog
             // workaround for https://github.com/dotnet/corefx/issues/10752
             for (int index = this.previousCreateIndex; index < stopIndex; ++index)
             {
-                NotifyCollectionChangedEventArgs eventArgs = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, this.array[index], index);
-                this.CollectionChanged.Invoke(this, eventArgs);
+                NotifyCollectionChangedEventArgs eventArgs = new(NotifyCollectionChangedAction.Add, this.array[index], index);
+                this.CollectionChanged?.Invoke(this, eventArgs);
             }
 
             this.previousCreateIndex = stopIndex;

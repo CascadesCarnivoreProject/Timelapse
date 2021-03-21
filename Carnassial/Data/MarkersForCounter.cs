@@ -14,7 +14,7 @@ namespace Carnassial.Data
         public string DataLabel { get; private set; }
         public List<Marker> Markers { get; private set; }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public MarkersForCounter(string dataLabel, int count)
         {
@@ -89,7 +89,7 @@ namespace Carnassial.Data
             }
 
             Marker marker = this.Markers[0];
-            StringBuilder pointList = new StringBuilder(marker.GetSpreadsheetPositionString());
+            StringBuilder pointList = new(marker.GetSpreadsheetPositionString());
             for (int index = 1; index < this.Markers.Count; ++index)
             {
                 marker = this.Markers[index];
@@ -113,7 +113,7 @@ namespace Carnassial.Data
             float y = BitConverter.ToSingle(packedFloats, sizeof(float));
             string xAsString = x.ToString(Constant.Excel.MarkerCoordinateFormat, Constant.InvariantCulture);
             string yAsString = y.ToString(Constant.Excel.MarkerCoordinateFormat, Constant.InvariantCulture);
-            StringBuilder pointList = new StringBuilder(xAsString + Constant.Excel.MarkerCoordinateSeparator + yAsString);
+            StringBuilder pointList = new(xAsString + Constant.Excel.MarkerCoordinateSeparator + yAsString);
             for (int index = 2 * sizeof(float); index < packedFloats.Length; index += 2 * sizeof(float))
             {
                 x = BitConverter.ToSingle(packedFloats, index);

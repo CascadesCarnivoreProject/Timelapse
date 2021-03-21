@@ -33,15 +33,12 @@ namespace Carnassial.Images
         {
             if (this.HasColorationAndLuminosity == false)
             {
-                switch (this.MetadataResult)
+                return this.MetadataResult switch
                 {
-                    case MetadataReadResults.Failed:
-                        return FileClassification.Corrupt;
-                    case MetadataReadResults.None:
-                        return FileClassification.NoLongerAvailable;
-                    default:
-                        throw new NotSupportedException("Unhandled metadata result " + this.MetadataResult.ToString());
-                }
+                    MetadataReadResults.Failed => FileClassification.Corrupt,
+                    MetadataReadResults.None => FileClassification.NoLongerAvailable,
+                    _ => throw new NotSupportedException("Unhandled metadata result " + this.MetadataResult.ToString()),
+                };
             }
 
             // a truly greyscale pixel has r = g = b but allow for some color cast

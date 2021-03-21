@@ -29,30 +29,19 @@ namespace Carnassial.Control
             set
             {
                 this.statusImage = value;
-                switch (value)
+                this.StatusImage.Source = value switch
                 {
                     // the MessageBoxImage enum has some duplicate values, so not all of them needed cases
                     //   - Hand = Stop = Error
                     //   - Exclamation = Warning
                     //   - Asterisk = Information
-                    case MessageBoxImage.Question:
-                        this.StatusImage.Source = Constant.Images.StatusHelp.Value;
-                        break;
-                    case MessageBoxImage.Warning:
-                        this.StatusImage.Source = Constant.Images.StatusWarning.Value;
-                        break;
-                    case MessageBoxImage.None:
-                        this.StatusImage.Source = null;
-                        break;
-                    case MessageBoxImage.Information:
-                        this.StatusImage.Source = Constant.Images.StatusInformation.Value;
-                        break;
-                    case MessageBoxImage.Error:
-                        this.StatusImage.Source = Constant.Images.StatusError.Value;
-                        break;
-                    default:
-                        throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled icon type {0}.", value));
-                }
+                    MessageBoxImage.Question => Constant.Images.StatusHelp.Value,
+                    MessageBoxImage.Warning => Constant.Images.StatusWarning.Value,
+                    MessageBoxImage.None => null,
+                    MessageBoxImage.Information => Constant.Images.StatusInformation.Value,
+                    MessageBoxImage.Error => Constant.Images.StatusError.Value,
+                    _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled icon type {0}.", value)),
+                };
             }
         }
 
@@ -68,7 +57,7 @@ namespace Carnassial.Control
             }
         }
 
-        private IEnumerable<object> Format(IEnumerable<Inline> textElements, object[] args)
+        private static IEnumerable<object> Format(IEnumerable<Inline> textElements, object?[] args)
         {
             if (textElements == null)
             {
@@ -125,7 +114,7 @@ namespace Carnassial.Control
 
         public string GetWhat()
         {
-            StringBuilder what = new StringBuilder();
+            StringBuilder what = new();
             foreach (Inline inline in this.What.Inlines)
             {
                 if (inline is Run run)
@@ -155,7 +144,7 @@ namespace Carnassial.Control
             this.SetVisibility();
         }
 
-        public void Initialize(Message message, params object[] args)
+        public void Initialize(Message message, params object?[] args)
         {
             Debug.Assert(String.IsNullOrWhiteSpace(message.Title) == false, "Message title unexpectedly empty.");
 
@@ -163,12 +152,12 @@ namespace Carnassial.Control
             this.Title.Text = String.Format(CultureInfo.CurrentCulture, message.Title, args);
             this.DisplayHideExplanation = message.DisplayHideExplanation;
 
-            this.Problem.Inlines.AddRange(this.Format(message.Problem, args));
-            this.What.Inlines.AddRange(this.Format(message.What, args));
-            this.Reason.Inlines.AddRange(this.Format(message.Reason, args));
-            this.Solution.Inlines.AddRange(this.Format(message.Solution, args));
-            this.Result.Inlines.AddRange(this.Format(message.Result, args));
-            this.Hint.Inlines.AddRange(this.Format(message.Hint, args));
+            this.Problem.Inlines.AddRange(StockMessageControl.Format(message.Problem, args));
+            this.What.Inlines.AddRange(StockMessageControl.Format(message.What, args));
+            this.Reason.Inlines.AddRange(StockMessageControl.Format(message.Reason, args));
+            this.Solution.Inlines.AddRange(StockMessageControl.Format(message.Solution, args));
+            this.Result.Inlines.AddRange(StockMessageControl.Format(message.Result, args));
+            this.Hint.Inlines.AddRange(StockMessageControl.Format(message.Hint, args));
 
             this.SetVisibility();
         }

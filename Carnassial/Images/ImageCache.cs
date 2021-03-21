@@ -400,7 +400,7 @@ namespace Carnassial.Images
             // all three images are available, so calculate difference and cache result if it still applies at completion
             return await Task.Run(() =>
             {
-                Stopwatch stopwatch = new Stopwatch();
+                Stopwatch stopwatch = new();
                 stopwatch.Start();
                 bool success = unaltered.Image.TryDifference(previous.Image, next.Image, differenceThreshold, out MemoryImage difference);
                 stopwatch.Stop();
@@ -486,7 +486,7 @@ namespace Carnassial.Images
 
             return await Task.Run(() =>
             {
-                Stopwatch stopwatch = new Stopwatch();
+                Stopwatch stopwatch = new();
                 stopwatch.Start();
                 bool success = unaltered.Image.TryDifference(comparisonImage.Image, differenceThreshold, out MemoryImage difference);
                 if (success)

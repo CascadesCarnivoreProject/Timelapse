@@ -45,8 +45,8 @@
                     Icon="Carnassial.ico" />
         </File>
       </Component>
-      <Component Id="$(var.Carnassial.TargetFileName).config" Guid="*" Win64="yes">
-        <File Id="$(var.Carnassial.TargetFileName).config" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\$(var.Carnassial.TargetFileName).config" />
+      <Component Id="$(var.Carnassial.TargetFileName).runtimeconfig.json" Guid="*" Win64="yes">
+        <File Id="$(var.Carnassial.TargetFileName).runtimeconfig.json" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\$(var.Carnassial.TargetFileName).config" />
       </Component>
       <Component Id="$(var.Carnassial.TargetName).pdb" Guid="*" Win64="yes">
         <File Id="$(var.Carnassial.TargetName).pdb" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\$(var.Carnassial.TargetName).pdb" />
@@ -68,8 +68,8 @@
                     Icon="Editor.ico" />
         </File>
       </Component>
-      <Component Id="$(var.TemplateEditor.TargetFileName).config" Guid="*" Win64="yes">
-        <File Id="$(var.TemplateEditor.TargetFileName).config" KeyPath="yes" Source="$(var.TemplateEditor.TargetDir)\$(var.TemplateEditor.TargetFileName).config" />
+      <Component Id="$(var.TemplateEditor.TargetFileName).runtimeconfig.json" Guid="*" Win64="yes">
+        <File Id="$(var.TemplateEditor.TargetFileName).runtimeconfig.json" KeyPath="yes" Source="$(var.TemplateEditor.TargetDir)\$(var.TemplateEditor.TargetFileName).config" />
       </Component>
       <Component Id="$(var.TemplateEditor.TargetName).pdb" Guid="*" Win64="yes">
         <File Id="$(var.TemplateEditor.TargetName).pdb" KeyPath="yes" Source="$(var.TemplateEditor.TargetDir)\$(var.TemplateEditor.TargetName).pdb" />
@@ -77,14 +77,8 @@
       <Component Id="DocumentFormat.OpenXml.dll" Guid="*" Win64="yes">
         <File Id="DocumentFormat.OpenXml.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\DocumentFormat.OpenXml.dll" />
       </Component>
-      <Component Id="DocumentFormat.OpenXml.xml" Guid="*" Win64="yes">
-        <File Id="DocumentFormat.OpenXml.xml" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\DocumentFormat.OpenXml.xml" />
-      </Component>
       <Component Id="MetadataExtractor.dll" Guid="*" Win64="yes">
         <File Id="MetadataExtractor.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\MetadataExtractor.dll" />
-      </Component>
-      <Component Id="MetadataExtractor.xml" Guid="*" Win64="yes">
-        <File Id="MetadataExtractor.xml" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\MetadataExtractor.xml" />
       </Component>
       <Component Id="Microsoft.WindowsAPICodePack.dll" Guid="*" Win64="yes">
         <File Id="Microsoft.WindowsAPICodePack.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\Microsoft.WindowsAPICodePack.dll" />
@@ -92,26 +86,11 @@
       <Component Id="Microsoft.WindowsAPICodePack.Shell.dll" Guid="*" Win64="yes">
         <File Id="Microsoft.WindowsAPICodePack.Shell.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\Microsoft.WindowsAPICodePack.Shell.dll" />
       </Component>
-      <Component Id="Microsoft.WindowsAPICodePack.Shell.xml" Guid="*" Win64="yes">
-        <File Id="Microsoft.WindowsAPICodePack.Shell.xml" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\Microsoft.WindowsAPICodePack.Shell.xml" />
-      </Component>
-      <Component Id="Microsoft.WindowsAPICodePack.xml" Guid="*" Win64="yes">
-        <File Id="Microsoft.WindowsAPICodePack.xml" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\Microsoft.WindowsAPICodePack.xml" />
-      </Component>
       <Component Id="Newtonsoft.Json.dll" Guid="*" Win64="yes">
         <File Id="Newtonsoft.Json.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\Newtonsoft.Json.dll" />
       </Component>
-      <Component Id="Newtonsoft.Json.xml" Guid="*" Win64="yes">
-        <File Id="Newtonsoft.Json.xml" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\Newtonsoft.Json.xml" />
-      </Component>
       <Component Id="System.Data.SQLite.dll" Guid="*" Win64="yes">
         <File Id="System.Data.SQLite.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\System.Data.SQLite.dll" />
-      </Component>
-      <Component Id="System.Data.SQLite.xml" Guid="*" Win64="yes">
-        <File Id="System.Data.SQLite.xml" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\System.Data.SQLite.xml" />
-      </Component>
-      <Component Id="System.IO.Packaging.dll" Guid="*" Win64="yes">
-        <File Id="System.IO.Packaging.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\System.IO.Packaging.dll" />
       </Component>
       <Component Id="turbojpeg.dll" Guid="*" Win64="yes">
         <File Id="turbojpeg.dll" KeyPath="yes" Source="$(var.Native.TargetDir)\turbojpeg.dll" />
@@ -119,17 +98,14 @@
       <Component Id="XmpCore.dll" Guid="*" Win64="yes">
         <File Id="XmpCore.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\XmpCore.dll" />
       </Component>
-      <Component Id="XmpCore.xml" Guid="*" Win64="yes">
-        <File Id="XmpCore.xml" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\XmpCore.xml" />
-      </Component>
       <Directory Id="x64.Interop" Name="x64">
         <Component Id="x64.SQLite.Interop.dll" Guid="*" Win64="yes">
-          <File Id="x64.SQLite.Interop.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\x64\SQLite.Interop.dll" />
+          <File Id="x64.SQLite.Interop.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\runtimes\win-x64\native\SQLite.Interop.dll" />
         </Component>
       </Directory>
       <Directory Id="x86.Interop" Name="x86">
         <Component Id="x86.SQLite.Interop.dll" Guid="*" Win64="yes">
-          <File Id="x86.SQLite.Interop.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\x86\SQLite.Interop.dll" />
+          <File Id="x86.SQLite.Interop.dll" KeyPath="yes" Source="$(var.Carnassial.TargetDir)\runtimes\win-x86\native\SQLite.Interop.dll" />
         </Component>
       </Directory>
       <Directory Id="ProgramMenuFolder">
@@ -155,29 +131,21 @@
   <Fragment>
     <ComponentGroup Id="CarnassialFiles">
       <ComponentRef Id="$(var.Carnassial.TargetFileName)" />
-      <ComponentRef Id="$(var.Carnassial.TargetFileName).config" />
+      <ComponentRef Id="$(var.Carnassial.TargetFileName).runtimeconfig.json" />
       <ComponentRef Id="$(var.Carnassial.TargetName).pdb" />
       <ComponentRef Id="$(var.Native.TargetFileName)" />
       <ComponentRef Id="$(var.Native.TargetName).pdb" />
       <ComponentRef Id="$(var.TemplateEditor.TargetFileName)" />
-      <ComponentRef Id="$(var.TemplateEditor.TargetFileName).config" />
+      <ComponentRef Id="$(var.TemplateEditor.TargetFileName).runtimeconfig.json" />
       <ComponentRef Id="$(var.TemplateEditor.TargetName).pdb" />
       <ComponentRef Id="DocumentFormat.OpenXml.dll" />
-      <ComponentRef Id="DocumentFormat.OpenXml.xml" />
       <ComponentRef Id="MetadataExtractor.dll" />
-      <ComponentRef Id="MetadataExtractor.xml" />
       <ComponentRef Id="Microsoft.WindowsAPICodePack.dll" />
       <ComponentRef Id="Microsoft.WindowsAPICodePack.Shell.dll" />
-      <ComponentRef Id="Microsoft.WindowsAPICodePack.Shell.xml" />
-      <ComponentRef Id="Microsoft.WindowsAPICodePack.xml" />
       <ComponentRef Id="Newtonsoft.Json.dll" />
-      <ComponentRef Id="Newtonsoft.Json.xml" />
       <ComponentRef Id="System.Data.SQLite.dll" />
-      <ComponentRef Id="System.Data.SQLite.xml" />
-      <ComponentRef Id="System.IO.Packaging.dll" />
       <ComponentRef Id="turbojpeg.dll" />
       <ComponentRef Id="XmpCore.dll" />
-      <ComponentRef Id="XmpCore.xml" />
       <ComponentRef Id="x64.SQLite.Interop.dll" />
       <ComponentRef Id="x86.SQLite.Interop.dll" />
       <ComponentRef Id="ApplicationComponent" />

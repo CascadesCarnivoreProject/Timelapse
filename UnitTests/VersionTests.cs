@@ -23,7 +23,7 @@ namespace Carnassial.UnitTests
         [TestMethod]
         public void CheckForUpdates()
         {
-            GithubReleaseClient carnassialUpdates = new GithubReleaseClient(Constant.ApplicationName, CarnassialConfigurationSettings.GetLatestReleaseApiAddress());
+            GithubReleaseClient carnassialUpdates = new(Constant.ApplicationName, CarnassialConfigurationSettings.GetLatestReleaseApiAddress());
             Assert.IsTrue(carnassialUpdates.TryGetAndParseRelease(false, out Version publiclyAvailableVersion));
 
             Version currentVersion = typeof(CarnassialWindow).Assembly.GetName().Version;

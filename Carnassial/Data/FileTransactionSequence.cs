@@ -39,8 +39,8 @@ namespace Carnassial.Data
 
         public static FileTransactionSequence CreateInsert(SQLiteDatabase database, FileTable fileTable)
         {
-            List<string> columns = new List<string>(1 + Constant.Control.StandardControls.Count + fileTable.UserColumnsByName.Count);
-            List<string> parameterNames = new List<string>(1 + Constant.Control.StandardControls.Count + fileTable.UserColumnsByName.Count);
+            List<string> columns = new(1 + Constant.Control.StandardControls.Count + fileTable.UserColumnsByName.Count);
+            List<string> parameterNames = new(1 + Constant.Control.StandardControls.Count + fileTable.UserColumnsByName.Count);
 
             foreach (string standardColumn in Constant.Control.StandardControls)
             {
@@ -53,15 +53,15 @@ namespace Carnassial.Data
                 parameterNames.Add(userColumn.Value.ParameterName);
             }
 
-            StringBuilder insertCommand = new StringBuilder("INSERT INTO " + Constant.DatabaseTable.Files + " (" + String.Join(", ", columns) + ") VALUES (" + String.Join(", ", parameterNames) + ")");
+            StringBuilder insertCommand = new("INSERT INTO " + Constant.DatabaseTable.Files + " (" + String.Join(", ", columns) + ") VALUES (" + String.Join(", ", parameterNames) + ")");
 
             return new FileTransactionSequence(insertCommand, database, fileTable);
         }
 
         public static FileTransactionSequence CreateUpdate(SQLiteDatabase database, FileTable fileTable)
         {
-            StringBuilder updateCommand = new StringBuilder("UPDATE " + Constant.DatabaseTable.Files + " SET ");
-            List<string> parameters = new List<string>(Constant.Control.StandardControls.Count + fileTable.UserColumnsByName.Count);
+            StringBuilder updateCommand = new("UPDATE " + Constant.DatabaseTable.Files + " SET ");
+            List<string> parameters = new(Constant.Control.StandardControls.Count + fileTable.UserColumnsByName.Count);
             foreach (string standardColumn in Constant.Control.StandardControls)
             {
                 parameters.Add(standardColumn + "=@" + standardColumn);

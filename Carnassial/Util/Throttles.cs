@@ -45,7 +45,7 @@ namespace Carnassial.Util
             this.FilePlayTimer.Interval = this.DesiredIntervalBetweenRenders;
         }
 
-        public void SetFilePlayInterval(ImageRow previousFile, ImageRow currentFile)
+        public void SetFilePlayInterval(ImageRow? previousFile, ImageRow currentFile)
         {
             if (currentFile.Classification == FileClassification.Video)
             {
@@ -61,7 +61,7 @@ namespace Carnassial.Util
             }
         }
 
-        public void StartFilePlayTimer(ImageRow previousFile, ImageRow currentFile)
+        public void StartFilePlayTimer(ImageRow? previousFile, ImageRow currentFile)
         {
             this.SetFilePlayInterval(previousFile, currentFile);
             this.FilePlayTimer.Start();

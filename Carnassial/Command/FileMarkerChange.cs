@@ -18,8 +18,10 @@ namespace Carnassial.Command
 
         private void AddMarker(CarnassialWindow carnassial)
         {
+            Debug.Assert(carnassial.IsFileAvailable(), "Attempt to change markers when no file displayed.");
+
             // insert the new marker and include it in the display list
-            MarkersForCounter markersForCounter = carnassial.DataHandler.ImageCache.Current.GetMarkersForCounter(this.marker.DataLabel);
+            MarkersForCounter markersForCounter = carnassial.DataHandler.ImageCache.Current!.GetMarkersForCounter(this.marker.DataLabel);
             carnassial.DataHandler.IsProgrammaticUpdate = true;
             markersForCounter.AddMarker(this.marker);
             carnassial.DataHandler.IsProgrammaticUpdate = false;
@@ -28,8 +30,8 @@ namespace Carnassial.Command
 
         public override void Execute(CarnassialWindow carnassial)
         {
-            Debug.Assert(carnassial.IsFileAvailable(), "Attempt to change markers when no file is current.");
-            Debug.Assert(this.FileID == carnassial.DataHandler.ImageCache.Current.ID, "Attempt to apply edit to a different file.");
+            Debug.Assert(carnassial.IsFileAvailable(), "Attempt to change markers when no file displayed.");
+            Debug.Assert(this.FileID == carnassial.DataHandler.ImageCache.Current!.ID, "Attempt to apply edit to a different file.");
 
             if (this.isCreation)
             {

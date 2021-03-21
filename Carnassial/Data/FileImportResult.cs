@@ -5,7 +5,7 @@ namespace Carnassial.Data
 {
     public class FileImportResult
     {
-        public Exception Exception { get; set; }
+        public Exception? Exception { get; set; }
         public List<string> Errors { get; private set; }
         public int FilesAdded { get; set; }
         public int FilesProcessed { get; set; }

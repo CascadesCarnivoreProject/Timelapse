@@ -28,7 +28,7 @@ namespace Carnassial.Control
         // Also ensures the latest added row is in view.
         public void AddFeedbackRow(string fileName, string status, string oldDateTime, string newDateTime, string difference)
         {
-            FeedbackRowTuple row = new FeedbackRowTuple(fileName, status, oldDateTime, newDateTime, difference);
+            FeedbackRowTuple row = new(fileName, status, oldDateTime, newDateTime, difference);
             this.feedbackRows.Add((FeedbackRowTuple)row);
         }
 

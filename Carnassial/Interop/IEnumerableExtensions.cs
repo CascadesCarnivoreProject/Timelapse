@@ -5,7 +5,7 @@ namespace Carnassial.Interop
 {
     internal static class IEnumerableExtensions
     {
-        public static void Dispose<T>(this IEnumerable<T> enumerable) where T : IDisposable
+        public static void Dispose<T>(this IEnumerable<T?> enumerable) where T : IDisposable
         {
             if (enumerable != null)
             {

@@ -5,7 +5,7 @@ namespace Carnassial.Dialog
 {
     public class DateTimeRereadResult : MetadataFieldResult
     {
-        public static new readonly DateTimeRereadResult Default = new DateTimeRereadResult();
+        public static new readonly DateTimeRereadResult Default = new();
 
         private DateTimeRereadResult()
             : base(null, null)

@@ -20,7 +20,7 @@ namespace Carnassial.Control
             set { this.ContentControl.IsReadOnly = value; }
         }
 
-        public override ImageRow DataContext
+        public override ImageRow? DataContext
         {
             get
             {
@@ -34,7 +34,7 @@ namespace Carnassial.Control
             }
         }
 
-        public DataEntryNote(ControlRow control, List<string> autocompletionsFromDatabase, bool readOnly, DataEntryControls styleProvider)
+        public DataEntryNote(ControlRow control, List<string>? autocompletionsFromDatabase, bool readOnly, DataEntryControls styleProvider)
             : base(control, styleProvider, ControlContentStyle.NoteCounterTextBox, ControlLabelStyle.Label, readOnly)
         {
             this.SetWellKnownValues(control.GetWellKnownValues());
@@ -53,7 +53,7 @@ namespace Carnassial.Control
             return this.ContentControl.Autocompletions;
         }
 
-        public void MergeAutocompletions(List<string> autocompletionsFromDatabase)
+        public void MergeAutocompletions(List<string>? autocompletionsFromDatabase)
         {
             if (autocompletionsFromDatabase == null)
             {
@@ -73,10 +73,10 @@ namespace Carnassial.Control
 
         public override void SetValue(object valueAsObject)
         {
-            string valueAsString;
+            string? valueAsString;
             if ((valueAsObject is string) || (valueAsObject == null))
             {
-                valueAsString = (string)valueAsObject;
+                valueAsString = (string?)valueAsObject;
             }
             else
             {

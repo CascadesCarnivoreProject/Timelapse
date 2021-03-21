@@ -6,6 +6,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data.SQLite;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 
@@ -17,7 +18,7 @@ namespace Carnassial.Data
     {
         private readonly Dictionary<string, ControlRow> controlsByDataLabel;
 
-        public event NotifyCollectionChangedEventHandler CollectionChanged;
+        public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
         public ControlTable()
         {
@@ -39,7 +40,7 @@ namespace Carnassial.Data
             get { throw new NotSupportedException(); }
         }
 
-        object IList.this[int index]
+        object? IList.this[int index]
         {
             get
             {
@@ -47,6 +48,10 @@ namespace Carnassial.Data
             }
             set
             {
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value));
+                }
                 ControlRow control = this.Rows[index];
                 this.Rows[index] = (ControlRow)value;
                 this.CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, value, control, index));
@@ -70,7 +75,7 @@ namespace Carnassial.Data
 
         public static SQLiteTableSchema CreateSchema()
         {
-            SQLiteTableSchema schema = new SQLiteTableSchema(Constant.DatabaseTable.Controls);
+            SQLiteTableSchema schema = new(Constant.DatabaseTable.Controls);
             schema.ColumnDefinitions.Add(ColumnDefinition.CreatePrimaryKey());
             schema.ColumnDefinitions.Add(new ColumnDefinition(Constant.ControlColumn.Type, Constant.SQLiteAffinity.Integer)
             {
@@ -107,7 +112,7 @@ namespace Carnassial.Data
             return schema;
         }
 
-        int IList.Add(object control)
+        int IList.Add(object? control)
         {
             int index = ((IList)this.Rows).Add(control);
             this.CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, control, index));
@@ -120,24 +125,40 @@ namespace Carnassial.Data
             this.CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
-        bool IList.Contains(object control)
+        bool IList.Contains(object? control)
         {
+            if (control == null)
+            {
+                throw new ArgumentNullException(nameof(control));
+            }
             return this.Rows.Contains((ControlRow)control);
         }
 
-        int IList.IndexOf(object control)
+        int IList.IndexOf(object? control)
         {
+            if (control == null)
+            {
+                throw new ArgumentNullException(nameof(control));
+            }
             return this.Rows.IndexOf((ControlRow)control);
         }
 
-        void IList.Insert(int index, object control)
+        void IList.Insert(int index, object? control)
         {
+            if (control == null)
+            {
+                throw new ArgumentNullException(nameof(control));
+            }
             this.Rows.Insert(index, (ControlRow)control);
             this.CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, control, index));
         }
 
-        void IList.Remove(object control)
+        void IList.Remove(object? control)
         {
+            if (control == null)
+            {
+                throw new ArgumentNullException(nameof(control));
+            }
             bool removed = this.Rows.Remove((ControlRow)control);
             if (removed)
             {
@@ -255,12 +276,10 @@ namespace Carnassial.Data
             while (reader.Read())
             {
                 // read file values
-                ControlRow control = new ControlRow()
+                ControlRow control = new((ControlType)reader.GetInt32(typeIndex), reader.GetString(dataLabelIndex), reader.GetInt32(controlOrderIndex))
                 {
                     AnalysisLabel = reader.GetBoolean(analysisLabelIndex),
-                    ControlOrder = reader.GetInt32(controlOrderIndex),
                     Copyable = reader.GetBoolean(copyableIndex),
-                    DataLabel = reader.GetString(dataLabelIndex),
                     DefaultValue = reader.GetString(defaultValueIndex),
                     ID = reader.GetInt64(idIndex),
                     IndexInFileTable = reader.GetBoolean(indexIndex),
@@ -269,7 +288,6 @@ namespace Carnassial.Data
                     MaxWidth = reader.GetInt32(maxWidthIndex),
                     SpreadsheetOrder = reader.GetInt32(spreadsheetOrderIndex),
                     Tooltip = reader.GetString(tooltipIndex),
-                    ControlType = (ControlType)reader.GetInt32(typeIndex),
                     Visible = reader.GetBoolean(visibleIndex)
                 };
                 control.AcceptChanges();
@@ -282,17 +300,21 @@ namespace Carnassial.Data
             this.CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
-        private void OnControlFieldChanged(object sender, PropertyChangedEventArgs controlChange)
+        private void OnControlFieldChanged(object? sender, PropertyChangedEventArgs controlChange)
         {
             if (String.Equals(controlChange.PropertyName, nameof(ControlRow.DataLabel), StringComparison.Ordinal) == false)
             {
                 // nothing to do
                 return;
             }
+            if (sender == null)
+            {
+                throw new ArgumentNullException(nameof(sender));
+            }
 
             // if data label changed, update index in controlsByDataLabel
             ControlRow control = (ControlRow)sender;
-            string oldDataLabel = null;
+            string? oldDataLabel = null;
             foreach (KeyValuePair<string, ControlRow> controlAndDataLabel in this.controlsByDataLabel)
             {
                 if (Object.ReferenceEquals(control, controlAndDataLabel.Value))
@@ -306,7 +328,7 @@ namespace Carnassial.Data
             this.controlsByDataLabel.Add(control.DataLabel, control);
         }
 
-        public bool TryGet(string dataLabel, out ControlRow control)
+        public bool TryGet(string dataLabel, [NotNullWhen(true)] out ControlRow? control)
         {
             return this.controlsByDataLabel.TryGetValue(dataLabel, out control);
         }

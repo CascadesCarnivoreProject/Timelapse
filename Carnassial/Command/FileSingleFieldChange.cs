@@ -6,11 +6,11 @@ namespace Carnassial.Command
     public class FileSingleFieldChange : FileChange
     {
         public string DataLabel { get; private set; }
-        public object NewValue { get; private set; }
-        public object PreviousValue { get; private set; }
+        public object? NewValue { get; private set; }
+        public object? PreviousValue { get; private set; }
         public string PropertyName { get; private set; }
 
-        public FileSingleFieldChange(long fileID, string dataLabel, string propertyName, object previousValue, object newValue, bool isExecuted)
+        public FileSingleFieldChange(long fileID, string dataLabel, string propertyName, object? previousValue, object? newValue, bool isExecuted)
             : base(fileID)
         {
             this.DataLabel = dataLabel;
@@ -20,14 +20,14 @@ namespace Carnassial.Command
             this.PropertyName = propertyName;
         }
 
-        private void ApplyValueToCurrentFile(CarnassialWindow carnassial, object value)
+        private void ApplyValueToCurrentFile(CarnassialWindow carnassial, object? value)
         {
             Debug.Assert(carnassial.IsFileAvailable(), "Attempt to edit file when no file is current.  Is a menu unexpectedly enabled?");
             Debug.Assert(this.FileID == carnassial.DataHandler.ImageCache.Current.ID, "Attempt to apply edit to a different file.");
 
             DataEntryControl control = carnassial.DataEntryControls.ControlsByDataLabel[this.DataLabel];
             carnassial.DataHandler.IsProgrammaticUpdate = true;
-            this.ApplyValueToFile(carnassial.DataHandler.ImageCache.Current, this.PropertyName, value, control, carnassial.State.CurrentFileSnapshot);
+            FileSingleFieldChange.ApplyValueToFile(carnassial.DataHandler.ImageCache.Current, this.PropertyName, value, control, carnassial.State.CurrentFileSnapshot);
             carnassial.DataHandler.IsProgrammaticUpdate = false;
         }
 

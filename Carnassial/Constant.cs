@@ -27,7 +27,7 @@ namespace Carnassial
 
         public static readonly TimeSpan CheckForUpdateInterval = TimeSpan.FromDays(1.25);
         public static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
-        public static readonly Version Windows8MinimumVersion = new Version(6, 2, 0, 0);
+        public static readonly Version Windows8MinimumVersion = new(6, 2, 0, 0);
 
         public static class ApplicationSettings
         {
@@ -49,7 +49,7 @@ namespace Carnassial
             public const string IFileOperationProgressSink = "04b0f1a7-9490-44bc-96e1-4296a31252e2";
             public const string IShellItem = "43826d1e-e718-42ee-bc55-a1e261c37bfe";
 
-            public static readonly Guid IFileOperationClsid = new Guid("3ad05575-8857-4850-9277-11b85bdb8e09");
+            public static readonly Guid IFileOperationClsid = new("3ad05575-8857-4850-9277-11b85bdb8e09");
         }
 
         public static class Control
@@ -146,7 +146,7 @@ namespace Carnassial
 
             // UmAlQuraCalendar does not support dates before 1900-04-30T00:00:00 so default to a later date
             // (see also Annus mirabilis)
-            public static readonly DateTimeOffset DateTimeValue = new DateTimeOffset(1905, 6, 30, 12, 0, 0, 0, TimeSpan.Zero);
+            public static readonly DateTimeOffset DateTimeValue = new(1905, 6, 30, 12, 0, 0, 0, TimeSpan.Zero);
         }
 
         public static class Database
@@ -222,6 +222,7 @@ namespace Carnassial
             public const string FileDatabaseFileExtension = ".ddb";
             public const string JpgFileExtension = ".jpg";
             public const string Mp4FileExtension = ".mp4";
+            public const string NoFileLoaded = "<no file loaded>";
             public const string ParentDirectory = "..";
             public const int RowsBetweenStatusReportChecks = 500;
             public const string TemplateFileExtension = ".tdb";
@@ -249,8 +250,8 @@ namespace Carnassial
 
         public static class GitHub
         {
-            public static readonly Uri ApiBaseAddress = new Uri("https://api.github.com/repos/");
-            public static readonly Uri BaseAddress = new Uri("https://github.com/");
+            public static readonly Uri ApiBaseAddress = new("https://api.github.com/repos/");
+            public static readonly Uri BaseAddress = new("https://github.com/");
         }
 
         public static class ImageDisplay
@@ -272,7 +273,7 @@ namespace Carnassial
             public const double MarkerGlowOpacity = 0.35;
             public const int MarkerGlowStrokeThickness = 7;
 
-            public static readonly SolidColorBrush MarkerFillBrush = new SolidColorBrush(Color.FromArgb(2, 0, 0, 0));
+            public static readonly SolidColorBrush MarkerFillBrush = new(Color.FromArgb(2, 0, 0, 0));
         }
 
         public static class Images
@@ -331,7 +332,7 @@ namespace Carnassial
                     }
 
                     // if it's not (editor, unit tests, resource not listed in App.xaml) fall back to loading from the resources assembly
-                    BitmapImage image = new BitmapImage();
+                    BitmapImage image = new();
                     image.BeginInit();
                     image.UriSource = new Uri("pack://application:,,/Resources/" + fileName);
                     image.EndInit();
@@ -424,6 +425,11 @@ namespace Carnassial
             }
         }
 
+        public static class Platform
+        {
+            public const string Windows = "windows";
+        }
+
         public static class Registry
         {
             public static class CarnassialKey
@@ -458,7 +464,7 @@ namespace Carnassial
 
         public static class Release
         {
-            public static readonly Version V2_2_0_3 = new Version(2, 2, 0, 3);
+            public static readonly Version V2_2_0_3 = new(2, 2, 0, 3);
         }
 
         public static class ResourceKey
@@ -720,7 +726,7 @@ namespace Carnassial
             public const int FindValueWidth = 200;
             public const string NoFindValue = "(none)";
 
-            public static readonly Thickness FindCellMargin = new Thickness(5, 2, 5, 2);
+            public static readonly Thickness FindCellMargin = new(5, 2, 5, 2);
             public static readonly ReadOnlyCollection<string> Localizations = new List<string>() { "ar", "es", "hi", "ms", "ru", "zh-Hans" }.AsReadOnly();
         }
 

@@ -3,6 +3,7 @@ using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -21,7 +22,7 @@ namespace Carnassial.Interop
         private readonly Lazy<long> length;
         private readonly Lazy<string> pathRoot;
 
-        public byte[] Buffer { get; private set; }
+        public byte[]? Buffer { get; private set; }
 
         static UnbufferedSequentialReader()
         {
@@ -39,7 +40,12 @@ namespace Carnassial.Interop
             this.length = new Lazy<long>(() => { return NativeMethods.GetFileSizeEx(this.file); });
             this.pathRoot = new Lazy<string>(() =>
             {
-                return Path.GetPathRoot(filePath);
+                string? root = Path.GetPathRoot(filePath);
+                if (root == null)
+                {
+                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Could not obtain root of path '{0}'.", filePath));
+                }
+                return root;
             });
         }
 
@@ -60,12 +66,12 @@ namespace Carnassial.Interop
 
         public void ExtendBuffer(int bytesToRead)
         {
-            byte[] existingBuffer = this.Buffer;
+            byte[]? existingBuffer = this.Buffer;
             int existingBufferLength = existingBuffer == null ? 0 : existingBuffer.Length;
             this.Buffer = new byte[existingBufferLength + bytesToRead];
             if (existingBufferLength > 0)
             {
-                ClrBuffer.BlockCopy(existingBuffer, 0, this.Buffer, 0, existingBufferLength);
+                ClrBuffer.BlockCopy(existingBuffer!, 0, this.Buffer, 0, existingBufferLength);
             }
 
             int bytesRead = this.Read(this.Buffer, existingBufferLength, bytesToRead);
@@ -179,6 +185,7 @@ namespace Carnassial.Interop
                 throw new ArgumentOutOfRangeException(nameof(bytes), App.FormatResource(Constant.ResourceKey.UnbufferedSequentialReaderBytesRequired, nameof(bytes)));
             }
 
+            Debug.Assert(this.Buffer != null);
             int newPosition = this.bufferPosition + (int)bytes;
             if (newPosition > this.Buffer.Length)
             {
@@ -189,6 +196,7 @@ namespace Carnassial.Interop
 
         public override bool TrySkip(long bytes)
         {
+            Debug.Assert(this.Buffer != null);
             int newPosition = this.bufferPosition + (int)bytes;
             if ((bytes < 0) || (newPosition > this.Buffer.Length))
             {

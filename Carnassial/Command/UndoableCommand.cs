@@ -7,7 +7,7 @@ namespace Carnassial.Command
     {
         private bool isExecuted;
 
-        public event EventHandler CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged;
 
         public UndoableCommand()
         {
@@ -26,7 +26,7 @@ namespace Carnassial.Command
                 if (value != this.isExecuted)
                 {
                     this.isExecuted = value;
-                    this.CanExecuteChanged?.Invoke(this, null);
+                    this.CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
@@ -48,13 +48,21 @@ namespace Carnassial.Command
 
         public abstract void Execute(TParameter parameter);
 
-        bool ICommand.CanExecute(object parameter)
+        bool ICommand.CanExecute(object? parameter)
         {
+            if (parameter == null)
+            {
+                throw new ArgumentNullException(nameof(parameter));
+            }
             return this.CanExecute((TParameter)parameter);
         }
 
-        void ICommand.Execute(object parameter)
+        void ICommand.Execute(object? parameter)
         {
+            if (parameter == null)
+            {
+                throw new ArgumentNullException(nameof(parameter));
+            }
             this.Execute((TParameter)parameter);
         }
 

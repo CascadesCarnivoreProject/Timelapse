@@ -41,11 +41,11 @@ namespace Carnassial.Images
             get { return this.Second.File != null; }
         }
 
-        public ImageProperties Classify(double darkLuminosityThreshold, ref MemoryImage preallocatedImage)
+        public ImageProperties Classify(double darkLuminosityThreshold, ref MemoryImage? preallocatedImage)
         {
             Debug.Assert(this.First.File != null, "First file unexpectedly null.");
 
-            ImageProperties firstProperties = null;
+            ImageProperties? firstProperties = null;
             if (this.First.File.IsVideo)
             {
                 this.First.File.Classification = FileClassification.Video;

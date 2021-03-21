@@ -72,16 +72,16 @@ namespace Carnassial.Dialog
 
         private void ConfirmBox_Checked(object sender, RoutedEventArgs e)
         {
-            this.OkButton.IsEnabled = (bool)this.Confirm.IsChecked;
+            this.OkButton.IsEnabled = this.Confirm.IsChecked ?? false;
         }
 
         private GridView CreateFileGridDataBindings()
         {
             List<ControlRow> controlsExceptUtcOffset = this.fileDatabase.Controls.InSpreadsheetOrder().Where(control => String.Equals(control.DataLabel, Constant.FileColumn.UtcOffset, StringComparison.Ordinal) == false).ToList();
-            GridView gridView = new GridView();
+            GridView gridView = new();
             foreach (ControlRow control in controlsExceptUtcOffset)
             {
-                GridViewColumn column = new GridViewColumn()
+                GridViewColumn column = new()
                 {
                     DisplayMemberBinding = new Binding(ImageRow.GetDataBindingPath(control)),
                     Header = ImageRow.GetPropertyName(control.DataLabel)

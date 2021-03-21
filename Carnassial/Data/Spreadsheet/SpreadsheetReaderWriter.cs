@@ -36,7 +36,7 @@ namespace Carnassial.Data.Spreadsheet
             this.status = new SpreadsheetReadWriteStatus(onProgressUpdate, desiredProgressUpdateInterval);
         }
 
-        private unsafe string EscapeForCsv(string value)
+        private unsafe string? EscapeForCsv(string? value)
         {
             if (value == null)
             {
@@ -87,7 +87,7 @@ namespace Carnassial.Data.Spreadsheet
             {
                 // write the header as defined by the data labels in the template file
                 // The append sequence results in a trailing comma which is retained when writing the line.
-                List<string> columns = new List<string>(database.Controls.RowCount);
+                List<string> columns = new(database.Controls.RowCount);
                 foreach (ControlRow control in database.Controls.InSpreadsheetOrder())
                 {
                     columns.Add(control.DataLabel);
@@ -134,254 +134,252 @@ namespace Carnassial.Data.Spreadsheet
         public void ExportFileDataToXlsx(FileDatabase fileDatabase, string xlsxFilePath)
         {
             bool xlsxExists = File.Exists(xlsxFilePath);
-            using (FileStream xlsxStream = new FileStream(xlsxFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read))
+            using FileStream xlsxStream = new(xlsxFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+            SpreadsheetDocument xlsx;
+            if (xlsxExists)
             {
-                SpreadsheetDocument xlsx;
-                if (xlsxExists)
+                xlsx = SpreadsheetDocument.Open(xlsxStream, true);
+            }
+            else
+            {
+                xlsx = SpreadsheetDocument.Create(xlsxStream, SpreadsheetDocumentType.Workbook);
+            }
+            using (xlsx)
+            {
+                // ensure workbook has needed parts
+                WorkbookPart workbook = xlsx.WorkbookPart;
+                if (workbook == null)
                 {
-                    xlsx = SpreadsheetDocument.Open(xlsxStream, true);
+                    workbook = xlsx.AddWorkbookPart();
+                    workbook.Workbook = new Workbook()
+                    {
+                        Sheets = new Sheets()
+                    };
+                }
+
+                SharedStringTablePart sharedStringTable = workbook.SharedStringTablePart;
+                if (sharedStringTable == null)
+                {
+                    sharedStringTable = workbook.AddNewPart<SharedStringTablePart>();
+                }
+                SharedStringIndex sharedStringIndex = new(sharedStringTable, this.status);
+
+                WorkbookStylesPart styles = workbook.WorkbookStylesPart;
+                if (styles == null)
+                {
+                    styles = workbook.AddNewPart<WorkbookStylesPart>();
+                }
+                OpenXmlStylesheet stylesheet = new(styles);
+
+                // if desired worksheet doesn't exist, add it to the workbook
+                // If worksheet exists it doesn't need to be deleted; creating an OpenXmlWriter on it overwrites its contents.
+                Sheet? worksheetInfo = workbook.Workbook.Sheets.Elements<Sheet>().FirstOrDefault(sheet => String.Equals(sheet.Name, Constant.Excel.FileDataWorksheetName, StringComparison.Ordinal));
+                WorksheetPart worksheet;
+                if (worksheetInfo == null)
+                {
+                    uint lowestUnusedSheetId = 1; // Excel requires repair of /xl/workbook.xml with a sheet ID of 0
+                    if (workbook.Workbook.Sheets.Any())
+                    {
+                        lowestUnusedSheetId = workbook.Workbook.Sheets.Elements<Sheet>().Max(sheet => sheet.SheetId.Value) + 1;
+                    }
+                    worksheetInfo = new Sheet()
+                    {
+                        Name = Constant.Excel.FileDataWorksheetName,
+                        SheetId = lowestUnusedSheetId
+                    };
+                    workbook.Workbook.Sheets.Append(worksheetInfo);
+
+                    worksheet = workbook.AddNewPart<WorksheetPart>();
+                    worksheetInfo.Id = xlsx.WorkbookPart.GetIdOfPart(worksheet);
                 }
                 else
                 {
-                    xlsx = SpreadsheetDocument.Create(xlsxStream, SpreadsheetDocumentType.Workbook);
+                    worksheet = (WorksheetPart)workbook.GetPartById(worksheetInfo.Id);
                 }
-                using (xlsx)
+
+                // get column headers for worksheet
+                List<string> columns = new(fileDatabase.Controls.RowCount);
+                List<SqlDataType> columnDataTypes = new(fileDatabase.Controls.RowCount);
+                foreach (ControlRow control in fileDatabase.Controls.InSpreadsheetOrder())
                 {
-                    // ensure workbook has needed parts
-                    WorkbookPart workbook = xlsx.WorkbookPart;
-                    if (workbook == null)
+                    string dataLabel = control.DataLabel;
+                    columns.Add(dataLabel);
+
+                    if (String.Equals(dataLabel, Constant.FileColumn.Classification, StringComparison.OrdinalIgnoreCase))
                     {
-                        workbook = xlsx.AddWorkbookPart();
-                        workbook.Workbook = new Workbook()
-                        {
-                            Sheets = new Sheets()
-                        };
+                        columnDataTypes.Add(SqlDataType.String);
                     }
-
-                    SharedStringTablePart sharedStringTable = workbook.SharedStringTablePart;
-                    if (sharedStringTable == null)
+                    else if (fileDatabase.Files.StandardColumnDataTypesByName.TryGetValue(dataLabel, out SqlDataType dataType))
                     {
-                        sharedStringTable = workbook.AddNewPart<SharedStringTablePart>();
-                    }
-                    SharedStringIndex sharedStringIndex = new SharedStringIndex(sharedStringTable, this.status);
-
-                    WorkbookStylesPart styles = workbook.WorkbookStylesPart;
-                    if (styles == null)
-                    {
-                        styles = workbook.AddNewPart<WorkbookStylesPart>();
-                    }
-                    OpenXmlStylesheet stylesheet = new OpenXmlStylesheet(styles);
-
-                    // if desired worksheet doesn't exist, add it to the workbook
-                    // If worksheet exists it doesn't need to be deleted; creating an OpenXmlWriter on it overwrites its contents.
-                    Sheet worksheetInfo = workbook.Workbook.Sheets.Elements<Sheet>().FirstOrDefault(sheet => String.Equals(sheet.Name, Constant.Excel.FileDataWorksheetName, StringComparison.Ordinal));
-                    WorksheetPart worksheet;
-                    if (worksheetInfo == null)
-                    {
-                        uint lowestUnusedSheetId = 1; // Excel requires repair of /xl/workbook.xml with a sheet ID of 0
-                        if (workbook.Workbook.Sheets.Any())
-                        {
-                            lowestUnusedSheetId = workbook.Workbook.Sheets.Elements<Sheet>().Max(sheet => sheet.SheetId.Value) + 1;
-                        }
-                        worksheetInfo = new Sheet()
-                        {
-                            Name = Constant.Excel.FileDataWorksheetName,
-                            SheetId = lowestUnusedSheetId
-                        };
-                        workbook.Workbook.Sheets.Append(worksheetInfo);
-
-                        worksheet = workbook.AddNewPart<WorksheetPart>();
-                        worksheetInfo.Id = xlsx.WorkbookPart.GetIdOfPart(worksheet);
+                        columnDataTypes.Add(dataType);
                     }
                     else
                     {
-                        worksheet = (WorksheetPart)workbook.GetPartById(worksheetInfo.Id);
+                        FileTableColumn userColumn = fileDatabase.Files.UserColumnsByName[dataLabel];
+                        columnDataTypes.Add(userColumn.DataType);
                     }
 
-                    // get column headers for worksheet
-                    List<string> columns = new List<string>(fileDatabase.Controls.RowCount);
-                    List<SqlDataType> columnDataTypes = new List<SqlDataType>(fileDatabase.Controls.RowCount);
-                    foreach (ControlRow control in fileDatabase.Controls.InSpreadsheetOrder())
+                    if (control.ControlType == ControlType.Counter)
                     {
-                        string dataLabel = control.DataLabel;
-                        columns.Add(dataLabel);
-
-                        if (String.Equals(dataLabel, Constant.FileColumn.Classification, StringComparison.OrdinalIgnoreCase))
-                        {
-                            columnDataTypes.Add(SqlDataType.String);
-                        }
-                        else if (fileDatabase.Files.StandardColumnDataTypesByName.TryGetValue(dataLabel, out SqlDataType dataType))
-                        {
-                            columnDataTypes.Add(dataType);
-                        }
-                        else
-                        {
-                            FileTableColumn userColumn = fileDatabase.Files.UserColumnsByName[dataLabel];
-                            columnDataTypes.Add(userColumn.DataType);
-                        }
-
-                        if (control.ControlType == ControlType.Counter)
-                        {
-                            columns.Add(FileTable.GetMarkerPositionColumnName(control.DataLabel));
-                            columnDataTypes.Add(SqlDataType.Blob);
-                        }
+                        columns.Add(FileTable.GetMarkerPositionColumnName(control.DataLabel));
+                        columnDataTypes.Add(SqlDataType.Blob);
                     }
+                }
 
-                    // write worksheet
-                    // As an aside, OpenXML 2.8.1 has a bug where calling WriteStartElement() on a worksheet with populated members
-                    // writes only those members and subsequent write calls---such as those for SheetData, here---are ignored
-                    // If cases arise where OpenXmlWriter is required, the workaround is to create and write the elements 
-                    // individually rather than populating the properties of worksheet.Worksheet.
-                    using (XmlWriter writer = XmlWriter.Create(worksheet.GetStream(FileMode.Create, FileAccess.Write)))
+                // write worksheet
+                // As an aside, OpenXML 2.8.1 has a bug where calling WriteStartElement() on a worksheet with populated members
+                // writes only those members and subsequent write calls---such as those for SheetData, here---are ignored
+                // If cases arise where OpenXmlWriter is required, the workaround is to create and write the elements 
+                // individually rather than populating the properties of worksheet.Worksheet.
+                using (XmlWriter writer = XmlWriter.Create(worksheet.GetStream(FileMode.Create, FileAccess.Write)))
+                {
+                    writer.WriteStartDocument();
+                    writer.WriteStartElement(Constant.OpenXml.Element.Worksheet, Constant.OpenXml.Namespace);
+                    writer.WriteAttributeString("xmlns", "r", null, "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
+
+                    writer.WriteStartElement(Constant.OpenXml.Element.Dimension, Constant.OpenXml.Namespace);
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.Reference, "A1:" + this.GetExcelColumnReference(columns.Count - 1) + (fileDatabase.Files.RowCount + 1).ToString(Constant.InvariantCulture));
+                    writer.WriteEndElement(); // dimension
+
+                    writer.WriteStartElement(Constant.OpenXml.Element.SheetViews, Constant.OpenXml.Namespace);
+                    writer.WriteStartElement(Constant.OpenXml.Element.SheetView, Constant.OpenXml.Namespace);
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.WorkbookViewId, "0");
+
+                    writer.WriteStartElement(Constant.OpenXml.Element.Pane, Constant.OpenXml.Namespace);
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.ActivePane, "bottomLeft");
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.State, "frozen");
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.TopLeftCell, "A2");
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.YSplit, "1");
+                    writer.WriteEndElement(); // pane
+
+                    writer.WriteStartElement(Constant.OpenXml.Element.Selection, Constant.OpenXml.Namespace);
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.Sqref, "A1");
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.ActiveCell, "A1");
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.Pane, "bottomLeft");
+                    writer.WriteEndElement(); // selection
+
+                    writer.WriteEndElement(); // sheetView
+                    writer.WriteEndElement(); // sheetViews
+
+                    writer.WriteStartElement(Constant.OpenXml.Element.SheetFormatProperties, Constant.OpenXml.Namespace);
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.DefaultRowHeight, "15");
+                    writer.WriteEndElement(); // sheetFormatPr
+
+                    writer.WriteStartElement(Constant.OpenXml.Element.Columns, Constant.OpenXml.Namespace);
+                    for (int columnIndex = 0; columnIndex < columns.Count; ++columnIndex)
                     {
-                        writer.WriteStartDocument();
-                        writer.WriteStartElement(Constant.OpenXml.Element.Worksheet, Constant.OpenXml.Namespace);
-                        writer.WriteAttributeString("xmlns", "r", null, "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
+                        // for now, special case column width estimates to headers and assume 11 point Calibri
+                        // See approximate width formula for this case in https://msdn.microsoft.com/en-us/library/documentformat.openxml.spreadsheet.column.aspx.
+                        // There appears to be a typo in that the padding allowance should be 2*4 + 1 = 9 pixels rather than 5.
+                        string column = columns[columnIndex];
+                        string excelColumnIndex = (columnIndex + 1).ToString(Constant.InvariantCulture);
+                        double width = (256.0 * (double)(column.Length * Constant.Excel.CalibriCharacterWidth11Point + Constant.Excel.AutoFilterDropdownWidth + 9) / (double)Constant.Excel.CalibriCharacterWidth11Point) / 256.0;
+                        writer.WriteStartElement(Constant.OpenXml.Element.Column, Constant.OpenXml.Namespace);
+                        writer.WriteAttributeString(Constant.OpenXml.Attribute.CustomWidth, "1");
+                        writer.WriteAttributeString(Constant.OpenXml.Attribute.Maximum, excelColumnIndex);
+                        writer.WriteAttributeString(Constant.OpenXml.Attribute.Minimum, excelColumnIndex);
+                        writer.WriteAttributeString(Constant.OpenXml.Attribute.Width, width.ToString("0.00", Constant.InvariantCulture));
+                        writer.WriteEndElement(); // col
+                    }
+                    writer.WriteEndElement(); // cols
 
-                        writer.WriteStartElement(Constant.OpenXml.Element.Dimension, Constant.OpenXml.Namespace);
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.Reference, "A1:" + this.GetExcelColumnReference(columns.Count - 1) + (fileDatabase.Files.RowCount + 1).ToString(Constant.InvariantCulture));
-                        writer.WriteEndElement(); // dimension
+                    this.status.BeginWrite(fileDatabase.Files.RowCount);
+                    writer.WriteStartElement(Constant.OpenXml.Element.SheetData, Constant.OpenXml.Namespace);
 
-                        writer.WriteStartElement(Constant.OpenXml.Element.SheetViews, Constant.OpenXml.Namespace);
-                        writer.WriteStartElement(Constant.OpenXml.Element.SheetView, Constant.OpenXml.Namespace);
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.WorkbookViewId, "0");
+                    string? boldFontStyleID = null;
+                    if (stylesheet.BoldFontStyleID >= 0)
+                    {
+                        boldFontStyleID = stylesheet.BoldFontStyleID.ToString(Constant.InvariantCulture);
+                    }
+                    string[] columnReferences = new string[columns.Count];
+                    writer.WriteStartElement(Constant.OpenXml.Element.Row, Constant.OpenXml.Namespace);
+                    for (int columnIndex = 0; columnIndex < columns.Count; ++columnIndex)
+                    {
+                        string columnReference = this.GetExcelColumnReference(columnIndex);
+                        columnReferences[columnIndex] = columnReference;
 
-                        writer.WriteStartElement(Constant.OpenXml.Element.Pane, Constant.OpenXml.Namespace);
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.ActivePane, "bottomLeft");
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.State, "frozen");
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.TopLeftCell, "A2");
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.YSplit, "1");
-                        writer.WriteEndElement(); // pane
+                        string stringIndex = sharedStringIndex.GetOrAdd(columns[columnIndex]).ToString(Constant.InvariantCulture);
+                        this.WriteCellToXlsx(writer, columnReference + "1", Constant.OpenXml.CellType.SharedString, boldFontStyleID, stringIndex);
+                    }
+                    writer.WriteEndElement(); // row
 
-                        writer.WriteStartElement(Constant.OpenXml.Element.Selection, Constant.OpenXml.Namespace);
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.Sqref, "A1");
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.ActiveCell, "A1");
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.Pane, "bottomLeft");
-                        writer.WriteEndElement(); // selection
+                    for (int fileIndex = 0, mostRecentReportCheck = 0; fileIndex < fileDatabase.Files.RowCount; ++fileIndex)
+                    {
+                        ImageRow file = fileDatabase.Files[fileIndex];
+                        string rowReference = (fileIndex + 2).ToString(Constant.InvariantCulture); // ones based indexing plus header row
 
-                        writer.WriteEndElement(); // sheetView
-                        writer.WriteEndElement(); // sheetViews
-
-                        writer.WriteStartElement(Constant.OpenXml.Element.SheetFormatProperties, Constant.OpenXml.Namespace);
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.DefaultRowHeight, "15");
-                        writer.WriteEndElement(); // sheetFormatPr
-
-                        writer.WriteStartElement(Constant.OpenXml.Element.Columns, Constant.OpenXml.Namespace);
-                        for (int columnIndex = 0; columnIndex < columns.Count; ++columnIndex)
-                        {
-                            // for now, special case column width estimates to headers and assume 11 point Calibri
-                            // See approximate width formula for this case in https://msdn.microsoft.com/en-us/library/documentformat.openxml.spreadsheet.column.aspx.
-                            // There appears to be a typo in that the padding allowance should be 2*4 + 1 = 9 pixels rather than 5.
-                            string column = columns[columnIndex];
-                            string excelColumnIndex = (columnIndex + 1).ToString(Constant.InvariantCulture);
-                            double width = (256.0 * (double)(column.Length * Constant.Excel.CalibriCharacterWidth11Point + Constant.Excel.AutoFilterDropdownWidth + 9) / (double)Constant.Excel.CalibriCharacterWidth11Point) / 256.0;
-                            writer.WriteStartElement(Constant.OpenXml.Element.Column, Constant.OpenXml.Namespace);
-                            writer.WriteAttributeString(Constant.OpenXml.Attribute.CustomWidth, "1");
-                            writer.WriteAttributeString(Constant.OpenXml.Attribute.Maximum, excelColumnIndex);
-                            writer.WriteAttributeString(Constant.OpenXml.Attribute.Minimum, excelColumnIndex);
-                            writer.WriteAttributeString(Constant.OpenXml.Attribute.Width, width.ToString("0.00", Constant.InvariantCulture));
-                            writer.WriteEndElement(); // col
-                        }
-                        writer.WriteEndElement(); // cols
-
-                        this.status.BeginWrite(fileDatabase.Files.RowCount);
-                        writer.WriteStartElement(Constant.OpenXml.Element.SheetData, Constant.OpenXml.Namespace);
-
-                        string boldFontStyleID = null;
-                        if (stylesheet.BoldFontStyleID >= 0)
-                        {
-                            boldFontStyleID = stylesheet.BoldFontStyleID.ToString(Constant.InvariantCulture);
-                        }
-                        string[] columnReferences = new string[columns.Count];
                         writer.WriteStartElement(Constant.OpenXml.Element.Row, Constant.OpenXml.Namespace);
                         for (int columnIndex = 0; columnIndex < columns.Count; ++columnIndex)
                         {
-                            string columnReference = this.GetExcelColumnReference(columnIndex);
-                            columnReferences[columnIndex] = columnReference;
+                            string column = columns[columnIndex];
+                            SqlDataType columnType = columnDataTypes[columnIndex];
+                            string? cellType;
+                            string? value = file.GetSpreadsheetString(column);
+                            if ((columnType == SqlDataType.String) || (columnType == SqlDataType.DateTime) || (columnType == SqlDataType.Blob))
+                            {
+                                if (value == null)
+                                {
+                                    // cells without values are omitted in OpenXML
+                                    continue;
+                                }
+                                // Excel "repairs" inline strings by dropping them, so place all strings in the shared string
+                                // table even if they're unlikely to occur more than once in a file.
+                                cellType = Constant.OpenXml.CellType.SharedString;
+                                value = sharedStringIndex.GetOrAdd(value).ToString(Constant.InvariantCulture);
+                            }
+                            else if (columnType == SqlDataType.Boolean)
+                            {
+                                cellType = Constant.OpenXml.CellType.Boolean;
+                            }
+                            else if ((columnType == SqlDataType.Real) || (columnType == SqlDataType.Integer))
+                            {
+                                cellType = null; // type attribute is omitted for cells of type number
+                            }
+                            else
+                            {
+                                throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", columnType));
+                            }
 
-                            string stringIndex = sharedStringIndex.GetOrAdd(columns[columnIndex]).ToString(Constant.InvariantCulture);
-                            this.WriteCellToXlsx(writer, columnReference + "1", Constant.OpenXml.CellType.SharedString, boldFontStyleID, stringIndex);
+                            this.WriteCellToXlsx(writer, columnReferences[columnIndex] + rowReference, cellType, null, value);
                         }
                         writer.WriteEndElement(); // row
 
-                        for (int fileIndex = 0, mostRecentReportCheck = 0; fileIndex < fileDatabase.Files.RowCount; ++fileIndex)
+                        if ((fileIndex - mostRecentReportCheck > Constant.File.RowsBetweenStatusReportChecks) && this.status.ShouldUpdateProgress())
                         {
-                            ImageRow file = fileDatabase.Files[fileIndex];
-                            string rowReference = (fileIndex + 2).ToString(Constant.InvariantCulture); // ones based indexing plus header row
-
-                            writer.WriteStartElement(Constant.OpenXml.Element.Row, Constant.OpenXml.Namespace);
-                            for (int columnIndex = 0; columnIndex < columns.Count; ++columnIndex)
-                            {
-                                string column = columns[columnIndex];
-                                SqlDataType columnType = columnDataTypes[columnIndex];
-                                string cellType;
-                                string value = file.GetSpreadsheetString(column);
-                                if ((columnType == SqlDataType.String) || (columnType == SqlDataType.DateTime) || (columnType == SqlDataType.Blob))
-                                {
-                                    if (value == null)
-                                    {
-                                        // cells without values are omitted in OpenXML
-                                        continue;
-                                    }
-                                    // Excel "repairs" inline strings by dropping them, so place all strings in the shared string
-                                    // table even if they're unlikely to occur more than once in a file.
-                                    cellType = Constant.OpenXml.CellType.SharedString;
-                                    value = sharedStringIndex.GetOrAdd(value).ToString(Constant.InvariantCulture);
-                                }
-                                else if (columnType == SqlDataType.Boolean)
-                                {
-                                    cellType = Constant.OpenXml.CellType.Boolean;
-                                }
-                                else if ((columnType == SqlDataType.Real) || (columnType == SqlDataType.Integer))
-                                {
-                                    cellType = null; // type attribute is omitted for cells of type number
-                                }
-                                else
-                                {
-                                    throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled column data type {0}.", columnType));
-                                }
-
-                                this.WriteCellToXlsx(writer, columnReferences[columnIndex] + rowReference, cellType, null, value);
-                            }
-                            writer.WriteEndElement(); // row
-
-                            if ((fileIndex - mostRecentReportCheck > Constant.File.RowsBetweenStatusReportChecks) && this.status.ShouldUpdateProgress())
-                            {
-                                this.status.QueueProgressUpdate(fileIndex);
-                            }
+                            this.status.QueueProgressUpdate(fileIndex);
                         }
-
-                        writer.WriteEndElement(); // sheetData
-
-                        writer.WriteStartElement(Constant.OpenXml.Element.AutoFilter, Constant.OpenXml.Namespace);
-                        writer.WriteAttributeString(Constant.OpenXml.Attribute.Reference, "A1:" + columnReferences[columns.Count - 1] + "1");
-                        writer.WriteEndElement(); // autoFilter
-
-                        writer.WriteEndElement(); // worksheet
                     }
 
-                    this.status.BeginExcelSave();
-                    if (sharedStringIndex.HasChanges)
-                    {
-                        // For performance, this would ideally be of the form
-                        //   sharedStringIndex.Write(workbook.SharedStringTablePart);
-                        // but, unlike Workbook, SharedStringTablePart doesn't implement Save().  Since SAX is not supported
-                        // here changes must be persisted through a DOM.
-                        workbook.SharedStringTablePart.SharedStringTable = sharedStringIndex.ToTable();
-                        workbook.SharedStringTablePart.SharedStringTable.Save();
-                        sharedStringIndex.AcceptChanges();
-                    }
-                    if (stylesheet.HasChanges)
-                    {
-                        // same lack of SAX support as with shared strings
-                        workbook.WorkbookStylesPart.Stylesheet = stylesheet.ToStylesheet();
-                        workbook.WorkbookStylesPart.Stylesheet.Save();
-                        stylesheet.AcceptChanges();
-                    }
-                    workbook.Workbook.Save();
-                    xlsx.Save();
-                    this.status.EndExcelWorkbookSave();
+                    writer.WriteEndElement(); // sheetData
+
+                    writer.WriteStartElement(Constant.OpenXml.Element.AutoFilter, Constant.OpenXml.Namespace);
+                    writer.WriteAttributeString(Constant.OpenXml.Attribute.Reference, "A1:" + columnReferences[columns.Count - 1] + "1");
+                    writer.WriteEndElement(); // autoFilter
+
+                    writer.WriteEndElement(); // worksheet
                 }
+
+                this.status.BeginExcelSave();
+                if (sharedStringIndex.HasChanges)
+                {
+                    // For performance, this would ideally be of the form
+                    //   sharedStringIndex.Write(workbook.SharedStringTablePart);
+                    // but, unlike Workbook, SharedStringTablePart doesn't implement Save().  Since SAX is not supported
+                    // here changes must be persisted through a DOM.
+                    workbook.SharedStringTablePart.SharedStringTable = sharedStringIndex.ToTable();
+                    workbook.SharedStringTablePart.SharedStringTable.Save();
+                    sharedStringIndex.AcceptChanges();
+                }
+                if (stylesheet.HasChanges)
+                {
+                    // same lack of SAX support as with shared strings
+                    workbook.WorkbookStylesPart.Stylesheet = stylesheet.ToStylesheet();
+                    workbook.WorkbookStylesPart.Stylesheet.Save();
+                    stylesheet.AcceptChanges();
+                }
+                workbook.Workbook.Save();
+                xlsx.Save();
+                this.status.EndExcelWorkbookSave();
             }
         }
 
@@ -468,7 +466,7 @@ namespace Carnassial.Data.Spreadsheet
                     {
                         // end of unescaped field
                         inField = false;
-                        string field = unparsedLine.Substring(fieldStart, index - fieldStart);
+                        string field = unparsedLine[fieldStart..index];
                         this.currentRow.Add(field);
                     }
                     else if (currentCharacter == '\"' && isFieldEscaped)
@@ -485,7 +483,7 @@ namespace Carnassial.Data.Spreadsheet
                                 // continuing parsing rather than terminating the field.
                                 inField = false;
                                 isFieldEscaped = false;
-                                string field = unparsedLine.Substring(fieldStart, index - fieldStart);
+                                string field = unparsedLine[fieldStart..index];
                                 field = field.Replace("\"\"", "\"");
                                 this.currentRow.Add(field);
                                 ++index;
@@ -505,7 +503,7 @@ namespace Carnassial.Data.Spreadsheet
             // final empty fields are ambiguous at this level and therefore handled by the caller
             if (inField)
             {
-                string field = unparsedLine.Substring(fieldStart, unparsedLine.Length - fieldStart);
+                string field = unparsedLine[fieldStart..];
                 if (isFieldEscaped)
                 {
                     field = field.Replace("\"\"", "\"");
@@ -602,7 +600,7 @@ namespace Carnassial.Data.Spreadsheet
                 throw new ArgumentOutOfRangeException(nameof(fileDatabase), App.FindResource<string>(Constant.ResourceKey.SpreadsheetReaderWriterFileSelectionNotAll));
             }
 
-            string relativePathFromDatabaseToSpreadsheet = NativeMethods.GetRelativePathFromDirectoryToDirectory(Path.GetDirectoryName(fileDatabase.FilePath), Path.GetDirectoryName(spreadsheetFilePath));
+            string? relativePathFromDatabaseToSpreadsheet = NativeMethods.GetRelativePathFromDirectoryToDirectory(Path.GetDirectoryName(fileDatabase.FilePath), Path.GetDirectoryName(spreadsheetFilePath));
             if (String.Equals(relativePathFromDatabaseToSpreadsheet, ".", StringComparison.Ordinal))
             {
                 relativePathFromDatabaseToSpreadsheet = null;
@@ -614,8 +612,8 @@ namespace Carnassial.Data.Spreadsheet
 
             // validate file header against the database
             readLine.Invoke();
-            List<string> columnsFromFileHeader = new List<string>(this.currentRow);
-            List<string> columnsInDatabase = new List<string>(fileDatabase.Controls.RowCount);
+            List<string> columnsFromFileHeader = new(this.currentRow);
+            List<string> columnsInDatabase = new(fileDatabase.Controls.RowCount);
             foreach (ControlRow control in fileDatabase.Controls)
             {
                 columnsInDatabase.Add(control.DataLabel);
@@ -627,7 +625,7 @@ namespace Carnassial.Data.Spreadsheet
                 }
             }
 
-            FileImportResult result = new FileImportResult();
+            FileImportResult result = new();
             List<string> columnsInDatabaseButNotInHeader = columnsInDatabase.Except(columnsFromFileHeader).ToList();
             foreach (string column in columnsInDatabaseButNotInHeader)
             {
@@ -645,7 +643,7 @@ namespace Carnassial.Data.Spreadsheet
                 return result;
             }
 
-            FileTableSpreadsheetMap spreadsheetMap = new FileTableSpreadsheetMap(columnsFromFileHeader, fileDatabase.Files);
+            FileTableSpreadsheetMap spreadsheetMap = new(columnsFromFileHeader, fileDatabase.Files);
             if (spreadsheetMap.FileNameSpreadsheetIndex == -1)
             {
                 result.Errors.Add(App.FormatResource(Constant.ResourceKey.SpreadsheetImportRequiredColumnNotInSpreadsheet, Constant.FileColumn.File));
@@ -670,8 +668,8 @@ namespace Carnassial.Data.Spreadsheet
 
             // read data for file from the .csv or .xlsx file
             Dictionary<string, Dictionary<string, ImageRow>> filesAlreadyInDatabaseByRelativePath = fileDatabase.Files.GetFilesByRelativePathAndName();
-            List<ImageRow> filesToInsert = new List<ImageRow>();
-            List<ImageRow> filesToUpdate = new List<ImageRow>();
+            List<ImageRow> filesToInsert = new();
+            List<ImageRow> filesToUpdate = new();
             int filesUnchanged = 0;
             int mostRecentReportCheck = 0;
             int rowsRead = 0;
@@ -708,8 +706,8 @@ namespace Carnassial.Data.Spreadsheet
                 }
 
                 bool addFile = false;
-                if ((filesAlreadyInDatabaseByRelativePath.TryGetValue(relativePath, out Dictionary<string, ImageRow> filesInFolder) == false) ||
-                    (filesInFolder.TryGetValue(fileName, out ImageRow file) == false))
+                if ((filesAlreadyInDatabaseByRelativePath.TryGetValue(relativePath, out Dictionary<string, ImageRow>? filesInFolder) == false) ||
+                    (filesInFolder.TryGetValue(fileName, out ImageRow? file) == false))
                 {
                     addFile = true;
                     file = fileDatabase.Files.CreateAndAppendFile(fileName, relativePath);
@@ -801,94 +799,82 @@ namespace Carnassial.Data.Spreadsheet
 
         private FileImportResult TryImportCsv(string csvFilePath, FileDatabase fileDatabase)
         {
-            using (FileStream stream = new FileStream(csvFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            {
-                using (StreamReader csvReader = new StreamReader(stream))
-                {
-                    this.status.BeginRead(csvReader.BaseStream.Length);
-                    FileImportResult result = this.TryImportData(fileDatabase,
-                        () => { return this.ReadAndParseCsvLine(csvReader); },
-                        () => { return stream.Position; },
-                        csvFilePath);
+            using FileStream stream = new(csvFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using StreamReader csvReader = new(stream);
+            this.status.BeginRead(csvReader.BaseStream.Length);
+            FileImportResult result = this.TryImportData(fileDatabase,
+                () => { return this.ReadAndParseCsvLine(csvReader); },
+                () => { return stream.Position; },
+                csvFilePath);
 
-                    this.status.End();
-                    return result;
-                }
-            }
+            this.status.End();
+            return result;
         }
 
         private FileImportResult TryImportXlsx(string xlsxFilePath, FileDatabase fileDatabase)
         {
             try
             {
-                using (FileStream xlsxStream = new FileStream(xlsxFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using FileStream xlsxStream = new(xlsxFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using SpreadsheetDocument xlsx = SpreadsheetDocument.Open(xlsxStream, false);
+                // find worksheet
+                WorkbookPart workbook = xlsx.WorkbookPart;
+                Sheet? worksheetInfo = workbook.Workbook.Sheets.Elements<Sheet>().FirstOrDefault(sheet => String.Equals(sheet.Name, Constant.Excel.FileDataWorksheetName, StringComparison.Ordinal));
+                if (worksheetInfo == null)
                 {
-                    using (SpreadsheetDocument xlsx = SpreadsheetDocument.Open(xlsxStream, false))
+                    FileImportResult worksheetNotFound = new();
+                    worksheetNotFound.Errors.Add(String.Format(CultureInfo.CurrentCulture, "Worksheet {0} not found.", Constant.Excel.FileDataWorksheetName));
+                    return worksheetNotFound;
+                }
+                WorksheetPart worksheet = (WorksheetPart)workbook.GetPartById(worksheetInfo.Id);
+
+                // load shared strings
+                List<string> sharedStrings = SharedStringIndex.GetSharedStrings(workbook.SharedStringTablePart, this.status);
+
+                // read data from worksheet
+                using Stream worksheetStream = worksheet.GetStream();
+                this.status.BeginRead(worksheetStream.Length);
+                using XmlReader reader = XmlReader.Create(worksheetStream);
+                // match the length of the pre-populated Excel row to the current worksheet
+                reader.MoveToContent();
+                if (reader.ReadToDescendant(Constant.OpenXml.Element.Dimension, Constant.OpenXml.Namespace) == false)
+                {
+                    throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SpreadsheetReaderWriterNoWorksheetDimension));
+                }
+                string? dimension = reader.GetAttribute(Constant.OpenXml.Attribute.Reference);
+                if (dimension == null)
+                {
+                    throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SpreadsheetReaderWriterNoDimensionReference));
+                }
+                string[] range = dimension.Split(':');
+                if ((range == null) || (range.Length != 2))
+                {
+                    throw new XmlException(String.Format(CultureInfo.CurrentCulture, "Worksheet dimension reference '{0}' is malformed.", dimension));
+                }
+                int maximumColumnIndex = this.GetExcelColumnIndex(range[1]);
+
+                if (this.currentRow.Count <= maximumColumnIndex)
+                {
+                    for (int index = this.currentRow.Count; index <= maximumColumnIndex; ++index)
                     {
-                        // find worksheet
-                        WorkbookPart workbook = xlsx.WorkbookPart;
-                        Sheet worksheetInfo = workbook.Workbook.Sheets.Elements<Sheet>().FirstOrDefault(sheet => String.Equals(sheet.Name, Constant.Excel.FileDataWorksheetName, StringComparison.Ordinal));
-                        if (worksheetInfo == null)
-                        {
-                            FileImportResult worksheetNotFound = new FileImportResult();
-                            worksheetNotFound.Errors.Add(String.Format(CultureInfo.CurrentCulture, "Worksheet {0} not found.", Constant.Excel.FileDataWorksheetName));
-                            return worksheetNotFound;
-                        }
-                        WorksheetPart worksheet = (WorksheetPart)workbook.GetPartById(worksheetInfo.Id);
-
-                        // load shared strings
-                        List<string> sharedStrings = SharedStringIndex.GetSharedStrings(workbook.SharedStringTablePart, this.status);
-
-                        // read data from worksheet
-                        using (Stream worksheetStream = worksheet.GetStream())
-                        {
-                            this.status.BeginRead(worksheetStream.Length);
-                            using (XmlReader reader = XmlReader.Create(worksheetStream))
-                            {
-                                // match the length of the pre-populated Excel row to the current worksheet
-                                reader.MoveToContent();
-                                if (reader.ReadToDescendant(Constant.OpenXml.Element.Dimension, Constant.OpenXml.Namespace) == false)
-                                {
-                                    throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SpreadsheetReaderWriterNoWorksheetDimension));
-                                }
-                                string dimension = reader.GetAttribute(Constant.OpenXml.Attribute.Reference);
-                                if (dimension == null)
-                                {
-                                    throw new XmlException(App.FindResource<string>(Constant.ResourceKey.SpreadsheetReaderWriterNoDimensionReference));
-                                }
-                                string[] range = dimension.Split(':');
-                                if ((range == null) || (range.Length != 2))
-                                {
-                                    throw new XmlException(String.Format(CultureInfo.CurrentCulture, "Worksheet dimension reference '{0}' is malformed.", dimension));
-                                }
-                                int maximumColumnIndex = this.GetExcelColumnIndex(range[1]);
-
-                                if (this.currentRow.Count <= maximumColumnIndex)
-                                {
-                                    for (int index = this.currentRow.Count; index <= maximumColumnIndex; ++index)
-                                    {
-                                        this.currentRow.Add(String.Empty);
-                                    }
-                                }
-                                else if (this.currentRow.Count > maximumColumnIndex + 1)
-                                {
-                                    this.currentRow.RemoveRange(maximumColumnIndex + 1, this.currentRow.Count - maximumColumnIndex - 1);
-                                }
-
-                                reader.ReadToNextSibling(Constant.OpenXml.Element.SheetData, Constant.OpenXml.Namespace);
-                                FileImportResult result = this.TryImportData(fileDatabase,
-                                    () => { return this.ReadXlsxRow(reader, sharedStrings); },
-                                    () => { return worksheetStream.Position; },
-                                    xlsxFilePath);
-                                return result;
-                            }
-                        }
+                        this.currentRow.Add(String.Empty);
                     }
                 }
+                else if (this.currentRow.Count > maximumColumnIndex + 1)
+                {
+                    this.currentRow.RemoveRange(maximumColumnIndex + 1, this.currentRow.Count - maximumColumnIndex - 1);
+                }
+
+                reader.ReadToNextSibling(Constant.OpenXml.Element.SheetData, Constant.OpenXml.Namespace);
+                FileImportResult result = this.TryImportData(fileDatabase,
+                    () => { return this.ReadXlsxRow(reader, sharedStrings); },
+                    () => { return worksheetStream.Position; },
+                    xlsxFilePath);
+                return result;
             }
             catch (IOException ioException)
             {
-                FileImportResult result = new FileImportResult();
+                FileImportResult result = new();
                 result.Errors.Add(ioException.ToString());
                 return result;
             }
@@ -898,7 +884,7 @@ namespace Carnassial.Data.Spreadsheet
             }
         }
 
-        private void WriteCellToXlsx(XmlWriter writer, string reference, string type, string style, string value)
+        private void WriteCellToXlsx(XmlWriter writer, string reference, string? type, string? style, string? value)
         {
             writer.WriteStartElement(Constant.OpenXml.Element.Cell, Constant.OpenXml.Namespace);
             writer.WriteAttributeString(Constant.OpenXml.Attribute.CellReference, reference);

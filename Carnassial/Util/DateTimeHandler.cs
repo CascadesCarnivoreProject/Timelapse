@@ -60,7 +60,7 @@ namespace Carnassial.Util
             if (utcOffsetAsString.StartsWith("-", StringComparison.Ordinal))
             {
                 negative = true;
-                utcOffsetAsString = utcOffsetAsString.Substring(1);
+                utcOffsetAsString = utcOffsetAsString[1..];
             }
 
             TimeSpan utcOffset = TimeSpan.ParseExact(utcOffsetAsString, Constant.Time.UtcOffsetDisplayFormat, Constant.InvariantCulture);

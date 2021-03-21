@@ -26,13 +26,19 @@ namespace Carnassial.Data
             : base(filePath)
         {
             this.Controls = new ControlTable();
-            this.FolderPath = Path.GetDirectoryName(filePath);
+            
+            string? folderPath = Path.GetDirectoryName(filePath);
+            if (folderPath == null)
+            {
+                throw new ArgumentOutOfRangeException(nameof(filePath), String.Format(CultureInfo.CurrentCulture, "Unable to extract directory name from database file path '{0}'.", filePath));
+            }
+            this.FolderPath = folderPath;
         }
 
         public ControlRow AppendUserDefinedControl(ControlType controlType)
         {
             // create the row for the new control in the data table
-            ControlRow newControl = new ControlRow(controlType, this.GetNextUniqueDataLabel(controlType.ToString()), this.Controls.RowCount + 1);
+            ControlRow newControl = new(controlType, this.GetNextUniqueDataLabel(controlType.ToString()), this.Controls.RowCount + 1);
             using (ControlTransactionSequence insertControl = ControlTransactionSequence.CreateInsert(this))
             {
                 insertControl.AddControl(newControl);
@@ -46,7 +52,7 @@ namespace Carnassial.Data
 
         protected void GetControlsSortedByControlOrder()
         {
-            Select select = new Select(Constant.DatabaseTable.Controls)
+            Select select = new(Constant.DatabaseTable.Controls)
             {
                 OrderBy = Constant.ControlColumn.ControlOrder
             };
@@ -57,7 +63,7 @@ namespace Carnassial.Data
         public string GetNextUniqueDataLabel(string dataLabelPrefix)
         {
             // get all existing data labels
-            List<string> dataLabels = new List<string>();
+            List<string> dataLabels = new();
             foreach (ControlRow control in this.Controls)
             {
                 dataLabels.Add(control.DataLabel);
@@ -77,7 +83,7 @@ namespace Carnassial.Data
 
         protected void LoadImageSet()
         {
-            ImageSetTable imageSetTable = new ImageSetTable();
+            ImageSetTable imageSetTable = new();
             this.LoadDataTableFromSelect(imageSetTable, new Select(Constant.DatabaseTable.ImageSet));
             this.ImageSet = imageSetTable[0];
         }
@@ -110,7 +116,7 @@ namespace Carnassial.Data
             // drop the control from the database and data table
             using (SQLiteTransaction transaction = this.Connection.BeginTransaction())
             {
-                using (SQLiteCommand removeControl = new SQLiteCommand("DELETE FROM " + Constant.DatabaseTable.Controls + Constant.Sql.Where + Constant.DatabaseColumn.ID + " = " + controlToRemove.ID, this.Connection))
+                using (SQLiteCommand removeControl = new("DELETE FROM " + Constant.DatabaseTable.Controls + Constant.Sql.Where + Constant.DatabaseColumn.ID + " = " + controlToRemove.ID, this.Connection))
                 {
                     removeControl.ExecuteNonQuery();
                 }
@@ -172,6 +178,7 @@ namespace Carnassial.Data
 
         public bool TrySyncImageSetToDatabase()
         {
+            Debug.Assert(this.ImageSet != null);
             if (this.ImageSet.HasChanges == false)
             {
                 return false;
@@ -248,7 +255,7 @@ namespace Carnassial.Data
             }
         }
 
-        protected virtual void OnDatabaseCreated(TemplateDatabase other)
+        protected virtual void OnDatabaseCreated(TemplateDatabase? other)
         {
             SQLiteTableSchema controlTableSchema = ControlTable.CreateSchema();
             SQLiteTableSchema imageSetTableSchema = ImageSetTable.CreateSchema();
@@ -267,15 +274,13 @@ namespace Carnassial.Data
                 if (other == null)
                 {
                     // populate image set table
-                    using (ImageSetTransactionSequence insertImageSet = ImageSetTransactionSequence.CreateInsert(this, transaction))
+                    using ImageSetTransactionSequence insertImageSet = ImageSetTransactionSequence.CreateInsert(this, transaction);
+                    insertImageSet.AddImageSet(new ImageSetRow()
                     {
-                        insertImageSet.AddImageSet(new ImageSetRow()
-                        {
-                            InitialFolderName = Path.GetFileName(this.FolderPath),
-                            Log = Constant.Database.ImageSetDefaultLog,
-                            TimeZone = TimeZoneInfo.Local.Id
-                        });
-                    }
+                        InitialFolderName = Path.GetFileName(this.FolderPath),
+                        Log = Constant.Database.ImageSetDefaultLog,
+                        TimeZone = TimeZoneInfo.Local.Id
+                    });
                 }
                 else
                 {
@@ -290,10 +295,10 @@ namespace Carnassial.Data
                     {
                         insertControls.AddControls(other.Controls);
                     }
-                    using (ImageSetTransactionSequence insertImageSet = ImageSetTransactionSequence.CreateInsert(this, transaction))
-                    {
-                        insertImageSet.AddImageSet(other.ImageSet);
-                    }
+
+                    Debug.Assert(other.ImageSet != null);
+                    using ImageSetTransactionSequence insertImageSet = ImageSetTransactionSequence.CreateInsert(this, transaction);
+                    insertImageSet.AddImageSet(other.ImageSet);
                 }
 
                 transaction.Commit();
@@ -306,33 +311,33 @@ namespace Carnassial.Data
                 int controlOrder = 0; // one based count incremented for every new control
 
                 // standard controls
-                ControlRow file = new ControlRow(ControlType.Note, Constant.FileColumn.File, ++controlOrder)
+                ControlRow file = new(ControlType.Note, Constant.FileColumn.File, ++controlOrder)
                 {
                     Copyable = false,
                     Label = Constant.FileColumn.File,
                     Tooltip = Constant.ControlDefault.FileTooltip
                 };
-                ControlRow relativePath = new ControlRow(ControlType.Note, Constant.FileColumn.RelativePath, ++controlOrder)
+                ControlRow relativePath = new(ControlType.Note, Constant.FileColumn.RelativePath, ++controlOrder)
                 {
                     Copyable = false,
                     Tooltip = Constant.ControlDefault.RelativePathTooltip
                 };
-                ControlRow dateTime = new ControlRow(ControlType.DateTime, Constant.FileColumn.DateTime, ++controlOrder)
+                ControlRow dateTime = new(ControlType.DateTime, Constant.FileColumn.DateTime, ++controlOrder)
                 {
                     IndexInFileTable = true,
                     Tooltip = Constant.ControlDefault.DateTimeTooltip
                 };
-                ControlRow utcOffset = new ControlRow(ControlType.UtcOffset, Constant.FileColumn.UtcOffset, ++controlOrder)
+                ControlRow utcOffset = new(ControlType.UtcOffset, Constant.FileColumn.UtcOffset, ++controlOrder)
                 {
                     Tooltip = Constant.ControlDefault.UtcOffsetTooltip
                 };
-                ControlRow classification = new ControlRow(ControlType.FixedChoice, Constant.FileColumn.Classification, ++controlOrder)
+                ControlRow classification = new(ControlType.FixedChoice, Constant.FileColumn.Classification, ++controlOrder)
                 {
                     Copyable = false,
                     WellKnownValues = Constant.ControlDefault.ClassificationWellKnownValues,
                     Tooltip = Constant.ControlDefault.ClassificationTooltip
                 };
-                ControlRow deleteFlag = new ControlRow(ControlType.Flag, Constant.FileColumn.DeleteFlag, ++controlOrder)
+                ControlRow deleteFlag = new(ControlType.Flag, Constant.FileColumn.DeleteFlag, ++controlOrder)
                 {
                     Copyable = false,
                     Label = Constant.ControlDefault.DeleteFlagLabel,
@@ -340,11 +345,9 @@ namespace Carnassial.Data
                 };
 
                 // insert standard controls into the controls table
-                using (ControlTransactionSequence transaction = ControlTransactionSequence.CreateInsert(this))
-                {
-                    transaction.AddControls(file, relativePath, dateTime, utcOffset, classification, deleteFlag);
-                    transaction.Commit();
-                }
+                using ControlTransactionSequence transaction = ControlTransactionSequence.CreateInsert(this);
+                transaction.AddControls(file, relativePath, dateTime, utcOffset, classification, deleteFlag);
+                transaction.Commit();
             }
 
             // reload controls table to get updated IDs
@@ -353,7 +356,7 @@ namespace Carnassial.Data
             this.LoadImageSet();
         }
 
-        protected virtual bool OnExistingDatabaseOpened(TemplateDatabase other)
+        protected virtual bool OnExistingDatabaseOpened(TemplateDatabase? other)
         {
             List<string> tables = this.GetTableNames();
             if (tables.Contains(Constant.DatabaseTable.Controls, StringComparer.Ordinal) == false)
@@ -365,20 +368,18 @@ namespace Carnassial.Data
             if (this.GetUserVersion() < Constant.Release.V2_2_0_3)
             {
                 this.UpdateControlTableTo2203Schema();
-                using (SQLiteTransaction transaction = this.Connection.BeginTransaction())
+                using SQLiteTransaction transaction = this.Connection.BeginTransaction();
+                this.UpdateImageSetTo2203Schema(transaction, tables);
+
+                if (other == null)
                 {
-                    this.UpdateImageSetTo2203Schema(transaction, tables);
-
-                    if (other == null)
-                    {
-                        // if this is a template database being opened go ahead and update its version
-                        // If it's a file database, don't update the database as the caller also needs to perform updates to complete
-                        // version migration.
-                        this.SetUserVersion(transaction, Constant.Release.V2_2_0_3);
-                    }
-
-                    transaction.Commit();
+                    // if this is a template database being opened go ahead and update its version
+                    // If it's a file database, don't update the database as the caller also needs to perform updates to complete
+                    // version migration.
+                    this.SetUserVersion(transaction, Constant.Release.V2_2_0_3);
                 }
+
+                transaction.Commit();
             }
             else
             {
@@ -393,11 +394,9 @@ namespace Carnassial.Data
         {
             Debug.Assert(control.HasChanges, "Unexpected call to sync control without changes.");
 
-            using (ControlTransactionSequence updateControl = ControlTransactionSequence.CreateUpdate(this))
-            {
-                updateControl.AddControl(control);
-                updateControl.Commit();
-            }
+            using ControlTransactionSequence updateControl = ControlTransactionSequence.CreateUpdate(this);
+            updateControl.AddControl(control);
+            updateControl.Commit();
         }
 
         private void UpdateControlTableTo2203Schema()
@@ -445,62 +444,60 @@ namespace Carnassial.Data
 
             if (addAnalysisLabel || addIndex || convertCopyableAndVisibleToInteger || convertTypeToInteger || renameList || renameWidth)
             {
-                using (SQLiteTransaction transaction = this.Connection.BeginTransaction())
+                using SQLiteTransaction transaction = this.Connection.BeginTransaction();
+                if (addAnalysisLabel)
                 {
-                    if (addAnalysisLabel)
+                    ColumnDefinition analysisLabel = new(Constant.ControlColumn.AnalysisLabel, Constant.SQLiteAffinity.Integer)
                     {
-                        ColumnDefinition analysisLabel = new ColumnDefinition(Constant.ControlColumn.AnalysisLabel, Constant.SQLiteAffinity.Integer)
-                        {
-                            DefaultValue = 0.ToString(Constant.InvariantCulture),
-                            NotNull = true
-                        };
-                        this.AddColumnToTable(transaction, Constant.DatabaseTable.Controls, 6, analysisLabel);
-                    }
-                    if (addIndex)
-                    {
-                        ColumnDefinition index = new ColumnDefinition(Constant.ControlColumn.IndexInFileTable, Constant.SQLiteAffinity.Integer)
-                        {
-                            DefaultValue = 0.ToString(Constant.InvariantCulture),
-                            NotNull = true
-                        };
-                        this.AddColumnToTable(transaction, Constant.DatabaseTable.Controls, 11, index);
-                    }
-
-                    if (convertCopyableAndVisibleToInteger)
-                    {
-                        this.ConvertBooleanStringColumnToInteger(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Copyable);
-                        this.ConvertBooleanStringColumnToInteger(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Visible);
-                    }
-                    if (convertTypeToInteger)
-                    {
-                        this.ConvertNonFlagEnumStringColumnToInteger<ControlType>(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Type);
-                    }
-
-                    if (renameList)
-                    {
-                        #pragma warning disable CS0618 // Type or member is obsolete
-                        this.RenameColumn(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.List, Constant.ControlColumn.WellKnownValues, (ColumnDefinition columnWithNameChanged) => { });
-                    }
-                    if (renameWidth)
-                    {
-                        #pragma warning disable CS0618 // Type or member is obsolete
-                        this.RenameColumn(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Width, Constant.ControlColumn.MaxWidth, (ColumnDefinition columnWithNameChanged) =>
-                        #pragma warning restore CS0618 // Type or member is obsolete
-                        {
-                            columnWithNameChanged.DefaultValue = Constant.ControlDefault.MaxWidth.ToString(Constant.InvariantCulture);
-                            columnWithNameChanged.NotNull = true;
-                        });
-                    }
-
-                    transaction.Commit();
+                        DefaultValue = 0.ToString(Constant.InvariantCulture),
+                        NotNull = true
+                    };
+                    this.AddColumnToTable(transaction, Constant.DatabaseTable.Controls, 6, analysisLabel);
                 }
+                if (addIndex)
+                {
+                    ColumnDefinition index = new(Constant.ControlColumn.IndexInFileTable, Constant.SQLiteAffinity.Integer)
+                    {
+                        DefaultValue = 0.ToString(Constant.InvariantCulture),
+                        NotNull = true
+                    };
+                    this.AddColumnToTable(transaction, Constant.DatabaseTable.Controls, 11, index);
+                }
+
+                if (convertCopyableAndVisibleToInteger)
+                {
+                    this.ConvertBooleanStringColumnToInteger(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Copyable);
+                    this.ConvertBooleanStringColumnToInteger(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Visible);
+                }
+                if (convertTypeToInteger)
+                {
+                    this.ConvertNonFlagEnumStringColumnToInteger<ControlType>(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Type);
+                }
+
+                if (renameList)
+                {
+#pragma warning disable CS0618 // Type or member is obsolete
+                    this.RenameColumn(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.List, Constant.ControlColumn.WellKnownValues, (ColumnDefinition columnWithNameChanged) => { });
+                }
+                if (renameWidth)
+                {
+#pragma warning disable CS0618 // Type or member is obsolete
+                    this.RenameColumn(transaction, Constant.DatabaseTable.Controls, Constant.ControlColumn.Width, Constant.ControlColumn.MaxWidth, (ColumnDefinition columnWithNameChanged) =>
+#pragma warning restore CS0618 // Type or member is obsolete
+                    {
+                        columnWithNameChanged.DefaultValue = Constant.ControlDefault.MaxWidth.ToString(Constant.InvariantCulture);
+                        columnWithNameChanged.NotNull = true;
+                    });
+                }
+
+                transaction.Commit();
             }
 
             this.GetControlsSortedByControlOrder();
 
             // rename image quality control to classification
             #pragma warning disable CS0618 // Type or member is obsolete
-            ControlRow imageQuality = this.Controls.SingleOrDefault(control => String.Equals(control.DataLabel, Constant.FileColumn.ImageQuality, StringComparison.Ordinal));
+            ControlRow? imageQuality = this.Controls.SingleOrDefault(control => String.Equals(control.DataLabel, Constant.FileColumn.ImageQuality, StringComparison.Ordinal));
             #pragma warning restore CS0618 // Type or member is obsolete
             if (imageQuality != null)
             {
@@ -512,6 +509,7 @@ namespace Carnassial.Data
             ControlRow classification = this.Controls[Constant.FileColumn.Classification];
             if (String.Equals(classification.WellKnownValues, Constant.ControlDefault.ClassificationWellKnownValues, StringComparison.Ordinal) == false)
             {
+                Debug.Assert(imageQuality != null);
                 imageQuality.Label = Constant.FileColumn.Classification;
                 classification.Tooltip = Constant.ControlDefault.ClassificationTooltip;
                 classification.WellKnownValues = Constant.ControlDefault.ClassificationWellKnownValues;
@@ -555,15 +553,13 @@ namespace Carnassial.Data
                 // create default ImageSet table if this is a .tdb from Carnassial 2.2.0.1 or earlier
                 SQLiteTableSchema imageSetTableSchema = ImageSetTable.CreateSchema();
                 imageSetTableSchema.CreateTableAndIndicies(this.Connection, transaction);
-                using (ImageSetTransactionSequence insertImageSet = ImageSetTransactionSequence.CreateInsert(this, transaction))
+                using ImageSetTransactionSequence insertImageSet = ImageSetTransactionSequence.CreateInsert(this, transaction);
+                insertImageSet.AddImageSet(new ImageSetRow()
                 {
-                    insertImageSet.AddImageSet(new ImageSetRow()
-                    {
-                        InitialFolderName = Path.GetFileName(this.FolderPath),
-                        Log = Constant.Database.ImageSetDefaultLog,
-                        TimeZone = TimeZoneInfo.Local.Id
-                    });
-                }
+                    InitialFolderName = Path.GetFileName(this.FolderPath),
+                    Log = Constant.Database.ImageSetDefaultLog,
+                    TimeZone = TimeZoneInfo.Local.Id
+                });
             }
             else
             {

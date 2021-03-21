@@ -10,11 +10,11 @@ namespace Carnassial.Util
     public class CarnassialState : CarnassialUserRegistrySettings
     {
         private int keyRepeatCount;
-        private KeyEventArgs mostRecentKey;
+        private KeyEventArgs? mostRecentKey;
 
-        public List<Dictionary<string, object>> Analysis { get; private set; }
+        public List<Dictionary<string, object?>?> Analysis { get; private set; }
         public DispatcherTimer BackupTimer { get; private set; }
-        public Dictionary<string, object> CurrentFileSnapshot { get; set; }
+        public Dictionary<string, object?> CurrentFileSnapshot { get; set; }
         public byte DifferenceThreshold { get; set; }
         public bool FileNavigatorSliderDragging { get; set; }
 
@@ -22,10 +22,10 @@ namespace Carnassial.Util
         public DispatcherTimer FileNavigatorSliderTimer { get; private set; }
 
         public DateTime MostRecentRender { get; set; }
-        public string MostRecentFileAddFolderPath { get; set; }
+        public string? MostRecentFileAddFolderPath { get; set; }
         public int MostRecentlyFocusedControlIndex { get; set; }
         public long MouseHorizontalScrollDelta { get; set; }
-        public string MouseOverCounter { get; set; }
+        public string? MouseOverCounter { get; set; }
         public List<DataEntryNote> NoteControlsWithNewValues { get; private set; }
         public UndoRedoChain<CarnassialWindow> UndoRedoChain { get; private set; }
 
@@ -34,7 +34,7 @@ namespace Carnassial.Util
             this.keyRepeatCount = 0;
             this.mostRecentKey = null;
 
-            this.Analysis = new List<Dictionary<string, object>>(Constant.AnalysisSlots);
+            this.Analysis = new(Constant.AnalysisSlots);
             for (int analysisSlot = 0; analysisSlot < Constant.AnalysisSlots; ++analysisSlot)
             {
                 this.Analysis.Add(null);
@@ -43,7 +43,7 @@ namespace Carnassial.Util
             {
                 Interval = Constant.Database.BackupInterval
             };
-            this.CurrentFileSnapshot = new Dictionary<string, object>(StringComparer.Ordinal);
+            this.CurrentFileSnapshot = new(StringComparer.Ordinal);
             this.DifferenceThreshold = Constant.Images.DifferenceThresholdDefault;
 
             this.FileNavigatorSliderDragging = false;

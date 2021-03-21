@@ -8,7 +8,7 @@ using System.Windows;
 [assembly: AssemblyDescription("Editor for Carnassial template database (.tdb) files.")]
 [assembly: AssemblyCompany("Cascades Carnivore Project")]
 [assembly: AssemblyProduct("Carnassial Template Editor")]
-[assembly: AssemblyCopyright("Copyright © 2019 Cascades Carnivore Project")]
+[assembly: AssemblyCopyright("Copyright © 2016-2021 Cascades Carnivore Project")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

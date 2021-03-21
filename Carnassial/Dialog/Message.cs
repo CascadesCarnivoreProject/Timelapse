@@ -15,9 +15,9 @@ namespace Carnassial.Dialog
         public List<Inline> Reason { get; set; }
         public List<Inline> Result { get; set; }
         public List<Inline> Solution { get; set; }
-        public string Title { get; set; }
+        public string? Title { get; set; }
         public List<Inline> What { get; set; }
-        public string WindowTitle { get; set; }
+        public string? WindowTitle { get; set; }
 
         public Message()
         {

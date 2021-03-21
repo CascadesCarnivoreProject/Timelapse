@@ -1,6 +1,7 @@
 ﻿using Carnassial.Interop;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Windows;
 
@@ -23,7 +24,7 @@ namespace Carnassial
 
             LocalizedApplication.ResourcesByCultureName = new Dictionary<string, ResourceDictionary>();
             CultureInfo keyboardCulture = NativeMethods.GetKeyboardCulture();
-            if (LocalizedApplication.TryLoadCultureResources(keyboardCulture, out string cultureName, out ResourceDictionary cultureDictionary))
+            if (LocalizedApplication.TryLoadCultureResources(keyboardCulture, out string cultureName, out ResourceDictionary? cultureDictionary))
             {
                 LocalizedApplication.ResourcesByCultureName.Add(cultureName, cultureDictionary);
             }
@@ -51,7 +52,7 @@ namespace Carnassial
 
         public static TResource FindResource<TResource>(string key, CultureInfo culture)
         {
-            if (LocalizedApplication.ResourcesByCultureName.TryGetValue(culture.Name, out ResourceDictionary dictionary) == false)
+            if (LocalizedApplication.ResourcesByCultureName.TryGetValue(culture.Name, out ResourceDictionary? dictionary) == false)
             {
                 LocalizedApplication.ResourcesByCultureName.TryGetValue(culture.TwoLetterISOLanguageName, out dictionary);
             }
@@ -67,7 +68,7 @@ namespace Carnassial
             return LocalizedApplication.FindResource<TResource>(key);
         }
 
-        public static string FormatResource(string key, params object[] args)
+        public static string FormatResource(string key, params object?[] args)
         {
             string format = LocalizedApplication.FindResource<string>(key);
             return String.Format(CultureInfo.CurrentCulture, format, args);
@@ -81,14 +82,14 @@ namespace Carnassial
             // 1) MergedDictionaries gets cleared afterwards
             // 2) culture resources need to be merged last to take effect
             CultureInfo uiCulture = CultureInfo.CurrentUICulture;
-            if (LocalizedApplication.TryLoadCultureResources(uiCulture, out string cultureName, out ResourceDictionary cultureDictionary))
+            if (LocalizedApplication.TryLoadCultureResources(uiCulture, out string cultureName, out ResourceDictionary? cultureDictionary))
             {
                 LocalizedApplication.ResourcesByCultureName.Add(cultureName, cultureDictionary);
                 this.Resources.MergedDictionaries.Add(cultureDictionary);
             }
         }
 
-        private static bool TryLoadCultureResources(CultureInfo culture, out string cultureName, out ResourceDictionary cultureDictionary)
+        private static bool TryLoadCultureResources(CultureInfo culture, out string cultureName, [NotNullWhen(true)] out ResourceDictionary? cultureDictionary)
         {
             cultureName = culture.TwoLetterISOLanguageName;
             if (Constant.UserInterface.Localizations.Contains(cultureName) == false)

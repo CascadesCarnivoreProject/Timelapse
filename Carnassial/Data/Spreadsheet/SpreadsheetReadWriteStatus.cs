@@ -9,7 +9,7 @@ namespace Carnassial.Data.Spreadsheet
         private bool isExcelLoad;
         private bool isExcelSave;
         private double spreadsheetReadPositionDivisor;
-        private string spreadsheetReadPositionUnit;
+        private string? spreadsheetReadPositionUnit;
 
         public SpreadsheetReadWriteStatus(Action<SpreadsheetReadWriteStatus> onProgressUpdate, TimeSpan progressUpdateInterval)
             : base(onProgressUpdate, progressUpdateInterval)

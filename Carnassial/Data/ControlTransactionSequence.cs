@@ -79,15 +79,15 @@ namespace Carnassial.Data
 
         public static ControlTransactionSequence CreateInsert(SQLiteDatabase database, SQLiteTransaction transaction)
         {
-            List<string> columns = new List<string>(Constant.ControlColumn.Columns.Count);
-            List<string> parameterNames = new List<string>(Constant.ControlColumn.Columns.Count);
+            List<string> columns = new(Constant.ControlColumn.Columns.Count);
+            List<string> parameterNames = new(Constant.ControlColumn.Columns.Count);
             foreach (string column in Constant.ControlColumn.Columns)
             {
                 columns.Add(column);
                 parameterNames.Add("@" + column);
             }
 
-            StringBuilder insertCommand = new StringBuilder("INSERT INTO " + Constant.DatabaseTable.Controls + " (" + String.Join(", ", columns) + ") VALUES (" + String.Join(", ", parameterNames) + ")");
+            StringBuilder insertCommand = new("INSERT INTO " + Constant.DatabaseTable.Controls + " (" + String.Join(", ", columns) + ") VALUES (" + String.Join(", ", parameterNames) + ")");
             return new ControlTransactionSequence(insertCommand, database, transaction);
         }
 
@@ -98,8 +98,8 @@ namespace Carnassial.Data
 
         public static ControlTransactionSequence CreateUpdate(SQLiteDatabase database, SQLiteTransaction transaction)
         {
-            StringBuilder updateCommand = new StringBuilder("UPDATE " + Constant.DatabaseTable.Controls + " SET ");
-            List<string> parameters = new List<string>(Constant.ControlColumn.Columns.Count);
+            StringBuilder updateCommand = new("UPDATE " + Constant.DatabaseTable.Controls + " SET ");
+            List<string> parameters = new(Constant.ControlColumn.Columns.Count);
             foreach (string column in Constant.ControlColumn.Columns)
             {
                 parameters.Add(column + "=@" + column);

@@ -25,25 +25,9 @@ namespace Carnassial.Data
         private bool visible;
         private string wellKnownValues;
 
-        public ControlRow()
-        {
-            this.analysisLabel = false;
-            this.controlOrder = -1;
-            this.copyable = false;
-            this.dataLabel = null;
-            this.defaultValue = null;
-            this.indexInFileTable = false;
-            this.label = null;
-            this.wellKnownValues = null;
-            this.maxWidth = -1;
-            this.spreadSheetOrder = -1;
-            this.tooltip = null;
-            this.type = (ControlType)(-1);
-            this.visible = false;
-        }
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public ControlRow(ControlType controlType, string dataLabel, int controlOrder)
-            : this()
         {
             this.controlOrder = controlOrder;
             this.copyable = true;
@@ -235,8 +219,6 @@ namespace Carnassial.Data
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
         public int SpreadsheetOrder
         {
             get
@@ -329,7 +311,7 @@ namespace Carnassial.Data
 
         public SearchTerm CreateSearchTerm()
         {
-            SearchTerm searchTerm = new SearchTerm(this);
+            SearchTerm searchTerm = new(this);
 
             return searchTerm;
         }
@@ -359,7 +341,7 @@ namespace Carnassial.Data
             }
         }
 
-        public object GetDefaultDatabaseValue()
+        public object? GetDefaultDatabaseValue()
         {
             switch (this.ControlType)
             {

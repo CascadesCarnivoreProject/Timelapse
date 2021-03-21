@@ -158,7 +158,7 @@ namespace Carnassial.UnitTests
 
             string markerColummn = FileTable.GetMarkerPositionColumnName(dataLabel);
             byte[] expectedPositions = (byte[])this.UserControlsByDataLabel[markerColummn];
-            MarkersForCounter expectedMarkersForCounter = new MarkersForCounter(dataLabel, expectedCount);
+            MarkersForCounter expectedMarkersForCounter = new(dataLabel, expectedCount);
             expectedMarkersForCounter.MarkerPositionsFromFloatArray(expectedPositions);
 
             Assert.IsTrue(expectedMarkersForCounter.Markers.Count == spreadsheetTokens.Length);

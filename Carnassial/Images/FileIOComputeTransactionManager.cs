@@ -30,25 +30,25 @@ namespace Carnassial.Images
         private int computeAtomIndex;
         private int computeFileIndex;
         private readonly int computeTaskCount;
-        private readonly Task<int>[] computeTasks;
+        private readonly Task<int>?[] computeTasks;
         private bool disposed;
-        private FileLoad[] fileLoads;
+        private FileLoad[]? fileLoads;
         private int ioAtomIndex;
         private readonly int[] ioAtomsCompletedByTask;
         private int ioFileIndex;
         private SortedDictionary<string, List<string>>.Enumerator ioFilesByRelativePathEnumerator;
-        private List<string> ioFilesInCurrentFolder;
+        private List<string>? ioFilesInCurrentFolder;
         private int ioFilesInCurrentFolderIndex;
         private readonly int ioTaskCount;
-        private readonly Task[] ioTasks;
+        private readonly Task?[] ioTasks;
         private int ioTasksActive;
         private bool isCompleted;
         private bool isExceptional;
-        private FileLoadAtom[] loadAtoms;
-        private WindowedTransactionSequence<FileLoad> transactionSequence;
+        private FileLoadAtom[]? loadAtoms;
+        private WindowedTransactionSequence<FileLoad>? transactionSequence;
 
-        protected Func<int, int> ComputeTaskBody { get; set; }
-        protected Action<int> IOTaskBody { get; set; }
+        protected Func<int, int>? ComputeTaskBody { get; set; }
+        protected Action<int>? IOTaskBody { get; set; }
         protected ExceptionPropagatingProgress<TProgress> Progress { get; private set; }
         protected TProgress Status { get; private set; }
         protected int TransactionFileCount { get; private set; }
@@ -145,7 +145,7 @@ namespace Carnassial.Images
                 this.computeTasks.Dispose();
                 this.ioFilesByRelativePathEnumerator.Dispose();
                 this.ioTasks.Dispose();
-                this.loadAtoms.Dispose();
+                this.loadAtoms?.Dispose();
                 if (this.transactionSequence != null)
                 {
                     this.transactionSequence.Dispose();
@@ -159,14 +159,15 @@ namespace Carnassial.Images
 
         protected void AddToSequence()
         {
+            Debug.Assert((this.fileLoads != null) && (this.transactionSequence != null));
             this.TransactionFileCount += this.transactionSequence.AddToSequence(this.fileLoads, this.addFileStartIndex, this.addFileStopIndex - this.addFileStartIndex);
             this.addFilesInProgress = false;
             this.addFileStartIndex = this.addFileStopIndex;
         }
 
-        protected FileLoadAtom GetNextComputeAtom(int computeThreadID)
+        protected FileLoadAtom? GetNextComputeAtom(int computeThreadID)
         {
-            FileLoadAtom atom = null;
+            FileLoadAtom? atom = null;
             while (atom == null)
             {
                 if (this.isExceptional || this.ShouldExitCurrentIteration)
@@ -177,6 +178,7 @@ namespace Carnassial.Images
                 int atomIndex = -1;
                 if (this.computeAtomIndex < this.ioAtomsCompletedByTask.Min())
                 {
+                    Debug.Assert(this.loadAtoms != null);
                     lock (this.loadAtoms)
                     {
                         if (this.computeAtomIndex < this.ioAtomsCompletedByTask.Min())
@@ -198,6 +200,7 @@ namespace Carnassial.Images
                 {
                     if (this.computeAtomIndex < this.ioAtomIndex)
                     {
+                        Debug.Assert(this.loadAtoms != null);
                         lock (this.loadAtoms)
                         {
                             if (this.computeAtomIndex < this.ioAtomIndex)
@@ -229,18 +232,19 @@ namespace Carnassial.Images
             return atom;
         }
 
-        protected FileLoadAtom GetNextIOAtom(int ioThreadID)
+        protected FileLoadAtom? GetNextIOAtom(int ioThreadID)
         {
             if (this.isExceptional || this.ShouldExitCurrentIteration)
             {
                 return null;
             }
 
+            Debug.Assert((this.ioFilesInCurrentFolder != null) && (this.transactionSequence != null));
             int atomIndex;
             int atomOffset;
             string firstFileName;
             string relativePath;
-            string secondFileName = null;
+            string? secondFileName = null;
             lock (this.transactionSequence)
             {
                 while (this.ioFilesInCurrentFolderIndex >= this.ioFilesInCurrentFolder.Count)
@@ -296,7 +300,8 @@ namespace Carnassial.Images
                 this.ioFilesInCurrentFolderIndex += increment;
             }
 
-            FileLoad firstLoad = new FileLoad(firstFileName);
+            Debug.Assert((this.fileLoads != null) && (this.loadAtoms != null));
+            FileLoad firstLoad = new(firstFileName);
             this.fileLoads[atomOffset] = firstLoad;
             FileLoad secondLoad = FileLoad.NoLoad;
             if (secondFileName != null)
@@ -306,7 +311,7 @@ namespace Carnassial.Images
             }
             this.ioAtomsCompletedByTask[ioThreadID] = atomIndex - 1;
 
-            FileLoadAtom loadAtom = new FileLoadAtom(relativePath, firstLoad, secondLoad, atomOffset);
+            FileLoadAtom loadAtom = new(relativePath, firstLoad, secondLoad, atomOffset);
             this.loadAtoms[atomIndex] = loadAtom;
             return loadAtom;
         }
@@ -330,7 +335,7 @@ namespace Carnassial.Images
                 throw new ObjectDisposedException(this.GetType().FullName);
             }
 
-            Stopwatch stopwatch = new Stopwatch();
+            Stopwatch stopwatch = new();
             stopwatch.Start();
 
             this.fileLoads = new FileLoad[filesToLoad];
@@ -349,10 +354,8 @@ namespace Carnassial.Images
                 {
                     try
                     {
-                        using (HyperthreadSiblingAffinity affinity = new HyperthreadSiblingAffinity(ioTaskNumber))
-                        {
-                            this.IOTaskBody.Invoke(ioTaskNumber);
-                        }
+                        using HyperthreadSiblingAffinity affinity = new(ioTaskNumber);
+                        this.IOTaskBody.Invoke(ioTaskNumber);
                     }
                     catch
                     {
@@ -369,10 +372,8 @@ namespace Carnassial.Images
                 {
                     try
                     {
-                        using (HyperthreadSiblingAffinity affinity = new HyperthreadSiblingAffinity(computeTaskNumber))
-                        {
-                            return this.ComputeTaskBody.Invoke(computeTaskNumber);
-                        }
+                        using HyperthreadSiblingAffinity affinity = new(computeTaskNumber);
+                        return this.ComputeTaskBody.Invoke(computeTaskNumber);
                     }
                     catch
                     {
@@ -382,11 +383,17 @@ namespace Carnassial.Images
                 });
             }
 
-            await Task.WhenAll(this.ioTasks).ConfigureAwait(false);
+            if (this.ioTasks != null)
+            {
+                await Task.WhenAll(this.ioTasks!).ConfigureAwait(false);
+            }
             this.ioTasksActive = 0;
             this.IODuration = stopwatch.Elapsed;
 
-            await Task.WhenAll(this.computeTasks).ConfigureAwait(false);
+            if (this.computeTasks != null)
+            {
+                await Task.WhenAll(this.computeTasks!).ConfigureAwait(false);
+            }
             this.ComputeDuration = stopwatch.Elapsed;
 
             // if not aborted, flush any remaining commits to database on success

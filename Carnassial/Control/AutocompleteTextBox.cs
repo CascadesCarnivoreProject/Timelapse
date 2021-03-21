@@ -13,7 +13,7 @@ namespace Carnassial.Control
     {
         public static readonly DependencyProperty AutocompletionsProperty = DependencyProperty.Register("Autocompletions", typeof(List<string>), typeof(AutocompleteTextBox));
 
-        private string mostRecentAutocompletion;
+        private string? mostRecentAutocompletion;
 
         public bool AllowLeadingWhitespace { get; set; }
         public bool SuppressAutocompletion { get; set; }
@@ -21,7 +21,7 @@ namespace Carnassial.Control
         /// <summary>
         /// Since autocompletion hooks the TextChanged event provide a follow on event to callers as event sequencing can be fragile.
         /// </summary>
-        public event Action<object, TextChangedEventArgs> TextAutocompleted;
+        public event Action<object, TextChangedEventArgs>? TextAutocompleted;
 
         public AutocompleteTextBox()
         {
@@ -83,7 +83,7 @@ namespace Carnassial.Control
                     indexOfCurrentAutocompletion = this.GetIndexOfCurrentAutocompletion();
                     if (indexOfCurrentAutocompletion < 1)
                     {
-                        this.Text = this.Autocompletions[this.Autocompletions.Count - 1];
+                        this.Text = this.Autocompletions[^1];
                     }
                     else
                     {
@@ -125,7 +125,7 @@ namespace Carnassial.Control
             if ((this.SuppressAutocompletion == false) && (String.IsNullOrEmpty(this.Text) == false) && eventArgs.Changes.Any(change => change.AddedLength > 0))
             {
                 int textLength = this.Text.Length;
-                string autocompletion = null;
+                string? autocompletion = null;
                 if (this.UseCompletion(this.mostRecentAutocompletion))
                 {
                     // prefer the most recently used completion over others
@@ -163,10 +163,10 @@ namespace Carnassial.Control
             }
         }
 
-        private bool UseCompletion(string completion)
+        private bool UseCompletion(string? completion)
         {
             int textLength = this.Text.Length;
-            if (completion != null && completion.Length >= textLength && completion.Substring(0, textLength).Equals(this.Text, StringComparison.Ordinal))
+            if ((completion != null) && (completion.Length >= textLength) && completion.Substring(0, textLength).Equals(this.Text, StringComparison.Ordinal))
             {
                 return true;
             }

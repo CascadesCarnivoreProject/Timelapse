@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using IBindCtx = System.Runtime.InteropServices.ComTypes.IBindCtx;
@@ -40,9 +41,10 @@ namespace Carnassial.Interop
                                                         FileAttributesNative dwFlagsAndAttributes,
                                                         IntPtr hTemplateFile);
 
+        [SupportedOSPlatform(Constant.Platform.Windows)]
         public static ComReleaser<IShellItem> CreateShellItem(string path)
         {
-            Guid shellItemGuid = new Guid(Constant.ComGuid.IShellItem);
+            Guid shellItemGuid = new(Constant.ComGuid.IShellItem);
             return new ComReleaser<IShellItem>((IShellItem)NativeMethods.SHCreateItemFromParsingName(path, null, ref shellItemGuid));
         }
 
@@ -72,9 +74,18 @@ namespace Carnassial.Interop
         [DllImport(Constant.Assembly.User32)]
         private static extern IntPtr GetKeyboardLayout(uint idThread);
 
-        private static string GetRelativePathFromDirectory(string fromDirectoryPath, string toPath, int toType)
+        private static string GetRelativePathFromDirectory(string? fromDirectoryPath, string? toPath, int toType)
         {
-            StringBuilder relativePathBuilder = new StringBuilder(260); // MAX_PATH
+            if (fromDirectoryPath == null)
+            {
+                throw new ArgumentNullException(nameof(fromDirectoryPath));
+            }
+            if (toPath == null)
+            {
+                throw new ArgumentNullException(nameof(toPath));
+            }
+
+            StringBuilder relativePathBuilder = new(260); // MAX_PATH
             if (NativeMethods.PathRelativePathTo(relativePathBuilder,
                                                  fromDirectoryPath,
                                                  NativeMethods.FILE_ATTRIBUTE_DIRECTORY,
@@ -87,12 +98,12 @@ namespace Carnassial.Interop
             string relativePath = relativePathBuilder.ToString();
             if (relativePath.StartsWith(".\\", StringComparison.Ordinal))
             {
-                relativePath = relativePath.Substring(2);
+                relativePath = relativePath[2..];
             }
             return relativePath;
         }
 
-        public static string GetRelativePathFromDirectoryToDirectory(string fromDirectoryPath, string toDirectoryPath)
+        public static string GetRelativePathFromDirectoryToDirectory(string? fromDirectoryPath, string ?toDirectoryPath)
         {
             return NativeMethods.GetRelativePathFromDirectory(fromDirectoryPath, toDirectoryPath, NativeMethods.FILE_ATTRIBUTE_DIRECTORY);
         }
@@ -128,7 +139,7 @@ namespace Carnassial.Interop
             // per docs, SHFileOperation() won't move files to recycle bin unless presented a full path
             filePath = Path.GetFullPath(filePath);
 
-            SHFILEOPSTRUCT moveToBin = new SHFILEOPSTRUCT()
+            SHFILEOPSTRUCT moveToBin = new()
             {
                 hwnd = IntPtr.Zero,
                 wFunc = SHFileOpFunc.FO_DELETE,
@@ -175,7 +186,7 @@ namespace Carnassial.Interop
 
         [DllImport(Constant.Assembly.Shell32, SetLastError = true, PreserveSig = false)]
         [return: MarshalAs(UnmanagedType.Interface)]
-        private static extern object SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string pszPath, IBindCtx pbc, ref Guid riid);
+        private static extern object SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string pszPath, IBindCtx? pbc, ref Guid riid);
 
         [DllImport(Constant.Assembly.Shell32, CharSet = CharSet.Unicode)]
         private static extern int SHFileOperation([In] ref SHFILEOPSTRUCT lpFileOp);
@@ -297,13 +308,13 @@ namespace Carnassial.Interop
             [MarshalAs(UnmanagedType.LPWStr)]
             public string pFrom;
             [MarshalAs(UnmanagedType.LPWStr)]
-            public string pTo;
+            public string? pTo;
             public FILEOP_FLAGS fFlags;
             [MarshalAs(UnmanagedType.Bool)]
             public bool fAnyOperationsAborted;
             public IntPtr hNameMappings;
             [MarshalAs(UnmanagedType.LPWStr)]
-            public string lpszProgressTitle;
+            public string? lpszProgressTitle;
         }
     }
 }

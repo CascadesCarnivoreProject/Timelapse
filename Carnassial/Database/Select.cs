@@ -7,7 +7,7 @@ namespace Carnassial.Database
 {
     public class Select
     {
-        public string OrderBy { get; set; }
+        public string? OrderBy { get; set; }
         public string Table { get; set; }
         public List<WhereClause> Where { get; private set; }
         public LogicalOperator WhereCombiningOperator { get; set; }
@@ -37,11 +37,11 @@ namespace Carnassial.Database
             string query = selectFrom + this.Table;
 
             // constrain with where clauses, if specified
-            List<SQLiteParameter> whereParameters = new List<SQLiteParameter>();
+            List<SQLiteParameter> whereParameters = new();
             if (this.Where.Count > 0)
             {
-                Dictionary<string, int> numberOfClausesByColumn = new Dictionary<string, int>(StringComparer.Ordinal);
-                List<string> whereClauses = new List<string>(this.Where.Count);
+                Dictionary<string, int> numberOfClausesByColumn = new(StringComparer.Ordinal);
+                List<string> whereClauses = new(this.Where.Count);
                 foreach (WhereClause clause in this.Where)
                 {
                     if (numberOfClausesByColumn.TryGetValue(clause.Column, out int clausesEncounteredForThisColumn) == false)
@@ -71,19 +71,12 @@ namespace Carnassial.Database
                     numberOfClausesByColumn[clause.Column] = ++clausesEncounteredForThisColumn;
                 }
 
-                string whereCombiningTerm;
-                switch (this.WhereCombiningOperator)
+                string whereCombiningTerm = this.WhereCombiningOperator switch
                 {
-                    case LogicalOperator.And:
-                        whereCombiningTerm = " AND ";
-                        break;
-                    case LogicalOperator.Or:
-                        whereCombiningTerm = " OR ";
-                        break;
-                    default:
-                        throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled logical operator {0}.", this.WhereCombiningOperator));
-                }
-
+                    LogicalOperator.And => " AND ",
+                    LogicalOperator.Or => " OR ",
+                    _ => throw new NotSupportedException(String.Format(CultureInfo.CurrentCulture, "Unhandled logical operator {0}.", this.WhereCombiningOperator)),
+                };
                 query += Constant.Sql.Where + String.Join(whereCombiningTerm, whereClauses);
             }
 
@@ -93,7 +86,7 @@ namespace Carnassial.Database
                 query += " ORDER BY " + this.OrderBy;
             }
 
-            SQLiteCommand command = new SQLiteCommand(query, connection);
+            SQLiteCommand command = new(query, connection);
 
             // add where parameters, if specified
             foreach (SQLiteParameter whereParameter in whereParameters)
@@ -106,10 +99,8 @@ namespace Carnassial.Database
 
         public long Count(SQLiteConnection connection)
         {
-            using (SQLiteCommand command = this.CreateSelect(connection, "SELECT Count(*) FROM "))
-            {
-                return (long)command.ExecuteScalar();
-            }
+            using SQLiteCommand command = this.CreateSelect(connection, "SELECT Count(*) FROM ");
+            return (long)command.ExecuteScalar();
         }
     }
 }

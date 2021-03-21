@@ -16,10 +16,10 @@ namespace Carnassial.Dialog
     {
         private bool displayingPreview;
         private readonly DateTimeOffset earliestFileDateTimeUncorrected;
-        private readonly ImageRow earliestFile;
+        private readonly ImageRow? earliestFile;
         private readonly FileDatabase fileDatabase;
         private readonly DateTimeOffset latestFileDateTimeUncorrected;
-        private readonly ImageRow latestFile;
+        private readonly ImageRow? latestFile;
 
         public bool Abort { get; private set; }
 
@@ -63,6 +63,7 @@ namespace Carnassial.Dialog
                 this.Abort = true;
                 return;
             }
+            Debug.Assert((this.earliestFile != null) && (this.latestFile != null));
 
             // configure earliest and latest images
             // Images proper are loaded in Window_Loaded().
@@ -219,6 +220,7 @@ namespace Carnassial.Dialog
             CommonUserInterface.SetDefaultDialogPosition(this);
             CommonUserInterface.TryFitWindowInWorkingArea(this);
 
+            Debug.Assert((this.earliestFile != null) && (this.latestFile != null));
             await this.EarliestFileDisplay.DisplayAsync(this.fileDatabase.FolderPath, this.earliestFile).ConfigureAwait(true);
             await this.LatestFileDisplay.DisplayAsync(this.fileDatabase.FolderPath, this.latestFile).ConfigureAwait(true);
             this.ClockDrift.TimeSpanDisplay.Focus();
